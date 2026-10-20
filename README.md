@@ -30,19 +30,20 @@ Dibangun dengan arsitektur modern, handal, hemat resource, dan *production-ready
    - Indikator status real-time: *Terhubung*, *Menghubungkan...*, dan *Terputus*.
    - Fitur kirim pesan uji coba (*test message*), putus sementara (*disconnect*), dan hapus sesi (*unpair*).
 
-3. **Pengelolaan via Chat WhatsApp (Bot Commands):**
-   Pengguna dapat mengelola reminder langsung dari chat WhatsApp (hanya nomor resmi pemilik yang diotorisasi):
-   - `help` / `bantuan` — Tampilkan daftar seluruh perintah.
-   - `buat Absen kerja | 08:00 | setiap hari` — Buat reminder harian.
-   - `buat Minum obat | 12:00 | setiap hari`
-   - `buat Olahraga pagi | 06:30 | senin, rabu, jumat` — Buat reminder hari tertentu.
-   - `buat Deadline Laporan | 2026-10-25 15:00 | sekali` — Buat reminder satu kali.
-   - `daftar` / `list` — Tampilkan semua reminder dengan statusnya.
-   - `detail <id>` — Lihat detail reminder (contoh: `detail 1`).
-   - `edit <id> jam <HH:mm>` — Ubah jam reminder (contoh: `edit 1 jam 13:00`).
-   - `aktifkan <id>` — Aktifkan reminder (contoh: `aktifkan 1`).
-   - `nonaktifkan <id>` — Matikan reminder (contoh: `nonaktifkan 1`).
-   - `hapus <id>` — Hapus reminder (contoh: `hapus 1`).
+3. **Pengelolaan via Chat WhatsApp (Bot Commands Prefix `!`):**
+   Pengguna dapat mengelola reminder langsung dari chat WhatsApp (nomor sendiri / target phone yang diotorisasi):
+   - `!help` / `!bantuan` — Tampilkan daftar seluruh perintah.
+   - `!ping` — Cek respon dan status aktif bot WhatsApp.
+   - `!buat Absen kerja | 08:00 | setiap hari` — Buat reminder harian (bisa pakai `!tambah`).
+   - `!buat Minum obat | 12:00 | setiap hari`
+   - `!buat Olahraga pagi | 06:30 | senin, rabu, jumat` — Buat reminder hari tertentu.
+   - `!buat Deadline Laporan | 2026-10-25 15:00 | sekali` — Buat reminder satu kali.
+   - `!daftar` / `!list` — Tampilkan semua reminder dengan statusnya.
+   - `!detail <id>` — Lihat detail reminder (contoh: `!detail 1`).
+   - `!edit <id> jam <HH:mm>` — Ubah jam reminder (contoh: `!edit 1 jam 13:00`).
+   - `!aktifkan <id>` — Aktifkan reminder (contoh: `!aktifkan 1`).
+   - `!nonaktifkan <id>` — Matikan reminder (contoh: `!nonaktifkan 1`).
+   - `!hapus <id>` — Hapus reminder (contoh: `!hapus 1`).
 
 4. **Keamanan & Proteksi PIN:**
    - Dashboard dilindungi PIN (4–12 digit).

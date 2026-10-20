@@ -32,66 +32,81 @@ func (h *CommandHandler) GetLocation() *time.Location {
 	return loc
 }
 
-// Handle processes incoming text message and returns response text
+// Handle processes incoming text message with '!' prefix and returns response text
 func (h *CommandHandler) Handle(input string) string {
 	text := strings.TrimSpace(input)
-	if text == "" {
+	if !strings.HasPrefix(text, "!") {
+		// Ignore any chat that does not start with '!' prefix
 		return ""
 	}
 
-	lower := strings.ToLower(text)
+	content := strings.TrimSpace(strings.TrimPrefix(text, "!"))
+	if content == "" {
+		return "Ketik *!help* untuk melihat panduan perintah WhatsApp Reminder."
+	}
 
-	switch {
-	case lower == "help" || lower == "bantuan":
+	fields := strings.Fields(content)
+	if len(fields) == 0 {
+		return "Ketik *!help* untuk melihat panduan perintah WhatsApp Reminder."
+	}
+
+	cmd := strings.ToLower(fields[0])
+
+	switch cmd {
+	case "help", "bantuan":
 		return h.helpMessage()
 
-	case lower == "daftar" || lower == "list":
+	case "ping":
+		return "🏓 *Pong!* Bot WhatsApp Reminder aktif & siap menerima perintah.\nKetik *!help* untuk melihat panduan lengkap."
+
+	case "daftar", "list":
 		return h.handleList()
 
-	case strings.HasPrefix(lower, "detail"):
-		return h.handleDetail(text)
+	case "detail":
+		return h.handleDetail(content)
 
-	case strings.HasPrefix(lower, "buat"):
-		return h.handleCreate(text)
+	case "buat", "tambah":
+		return h.handleCreate(content)
 
-	case strings.HasPrefix(lower, "edit"):
-		return h.handleEdit(text)
+	case "edit":
+		return h.handleEdit(content)
 
-	case strings.HasPrefix(lower, "aktifkan"):
-		return h.handleToggle(text, true)
+	case "aktifkan", "on":
+		return h.handleToggle(content, true)
 
-	case strings.HasPrefix(lower, "nonaktifkan"):
-		return h.handleToggle(text, false)
+	case "nonaktifkan", "off":
+		return h.handleToggle(content, false)
 
-	case strings.HasPrefix(lower, "hapus"):
-		return h.handleDelete(text)
+	case "hapus", "delete":
+		return h.handleDelete(content)
 
 	default:
-		// Unknown command or normal chat
-		return "Perintah tidak dikenali. Ketik *help* untuk melihat panduan perintah WhatsApp Reminder."
+		return "Perintah tidak dikenali. Ketik *!help* untuk melihat daftar perintah WhatsApp Reminder."
 	}
 }
 
 func (h *CommandHandler) helpMessage() string {
-	return `*Daftar Perintah WhatsApp Reminder*
+	return `*Daftar Perintah WhatsApp Reminder* (Prefix: *!*)
 
 1. *Lihat Reminder:*
-• *daftar* - Tampilkan semua reminder
-• *detail <id>* - Lihat detail reminder (contoh: detail 1)
+• *!daftar* (atau *!list*) - Tampilkan semua reminder
+• *!detail <id>* - Lihat detail reminder (contoh: *!detail 1*)
+• *!ping* - Cek koneksi bot
 
 2. *Buat Reminder:*
-Format: *buat <Judul> | <Waktu> | <Pengulangan>*
+Format: *!buat <Judul> | <Waktu> | <Pengulangan>*
+(Bisa juga pakai *!tambah*)
 Contoh:
-• *buat Absen kerja | 08:00 | setiap hari*
-• *buat Minum obat | 12:00 | setiap hari*
-• *buat Olahraga | 06:30 | senin, rabu, jumat*
-• *buat Deadline Project | 2026-10-25 15:00 | sekali*
+• *!buat Absen kerja | 08:00 | setiap hari*
+• *!buat Minum obat | 12:00 | setiap hari*
+• *!buat Olahraga | 06:30 | senin, rabu, jumat*
+• *!buat Deadline Project | 2026-10-25 15:00 | sekali*
 
 3. *Ubah & Kelola:*
-• *edit <id> jam <HH:mm>* - Ubah jam (contoh: edit 1 jam 13:00)
-• *aktifkan <id>* - Aktifkan reminder (contoh: aktifkan 1)
-• *nonaktifkan <id>* - Matikan reminder (contoh: nonaktifkan 1)
-• *hapus <id>* - Hapus reminder (contoh: hapus 1)`
+• *!edit <id> jam <HH:mm>* - Ubah jam (contoh: *!edit 1 jam 13:00*)
+• *!aktifkan <id>* - Aktifkan reminder (contoh: *!aktifkan 1*)
+• *!nonaktifkan <id>* - Matikan reminder (contoh: *!nonaktifkan 1*)
+• *!hapus <id>* - Hapus reminder (contoh: *!hapus 1*)`
 }
 
 func (h *CommandHandler) handleList() string {
@@ -100,7 +115,7 @@ func (h *CommandHandler) handleList() string {
 		return "Gagal mengambil daftar reminder: " + err.Error()
 	}
 	if len(items) == 0 {
-		return "Belum ada reminder yang terdaftar. Ketik *help* untuk cara membuat reminder baru."
+		return "Belum ada reminder yang terdaftar. Ketik *!help* untuk cara membuat reminder baru."
 	}
 
 	loc := h.GetLocation()
@@ -132,18 +147,18 @@ func (h *CommandHandler) handleList() string {
 		sb.WriteString(fmt.Sprintf("⏰ %s (%s) | %s\n\n", timeStr, recurrenceDesc, status))
 	}
 
-	sb.WriteString("Ketik *detail <id>* untuk melihat pesan lengkap.")
+	sb.WriteString("Ketik *!detail <id>* untuk melihat detail.")
 	return sb.String()
 }
 
-func (h *CommandHandler) handleDetail(text string) string {
-	parts := strings.Fields(text)
+func (h *CommandHandler) handleDetail(content string) string {
+	parts := strings.Fields(content)
 	if len(parts) < 2 {
-		return "Format salah. Gunakan: *detail <id>* (contoh: detail 1)"
+		return "Format salah. Gunakan: *!detail <id>* (contoh: *!detail 1*)"
 	}
 	id, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil {
-		return "ID reminder harus berupa angka. Contoh: detail 1"
+		return "ID reminder harus berupa angka. Contoh: *!detail 1*"
 	}
 
 	item, err := h.reminderService.GetReminder(id)
@@ -152,9 +167,9 @@ func (h *CommandHandler) handleDetail(text string) string {
 	}
 
 	loc := h.GetLocation()
-	status := "Aktif"
+	status := "Aktif 🟢"
 	if !item.IsActive {
-		status = "Nonaktif"
+		status = "Nonaktif ⚪"
 	}
 
 	msg := item.Message
@@ -179,12 +194,15 @@ func (h *CommandHandler) handleDetail(text string) string {
 	)
 }
 
-func (h *CommandHandler) handleCreate(text string) string {
-	// Cut "buat" prefix
-	content := strings.TrimSpace(text[4:])
-	parts := strings.Split(content, "|")
+func (h *CommandHandler) handleCreate(content string) string {
+	idx := strings.Index(content, " ")
+	if idx == -1 {
+		return "Format salah. Gunakan: *!buat <Judul> | <Waktu> | <Pengulangan>*\nContoh: *!buat Minum obat | 12:00 | setiap hari*"
+	}
+	rawArgs := strings.TrimSpace(content[idx+1:])
+	parts := strings.Split(rawArgs, "|")
 	if len(parts) < 2 {
-		return "Format salah. Gunakan: *buat <Judul> | <Waktu> | <Pengulangan>*\nContoh: *buat Minum obat | 12:00 | setiap hari*"
+		return "Format salah. Gunakan: *!buat <Judul> | <Waktu> | <Pengulangan>*\nContoh: *!buat Minum obat | 12:00 | setiap hari*"
 	}
 
 	title := strings.TrimSpace(parts[0])
@@ -212,7 +230,6 @@ func (h *CommandHandler) handleCreate(text string) string {
 	case repeatStr == "mingguan" || repeatStr == "weekly" || repeatStr == "setiap minggu":
 		recurrenceType = reminder.RecurrenceWeekly
 	default:
-		// Check if it's days of week
 		parsedDays := reminder.ParseRecurrenceDays(repeatStr)
 		if len(parsedDays) > 0 {
 			recurrenceType = reminder.RecurrenceSpecificDays
@@ -223,7 +240,6 @@ func (h *CommandHandler) handleCreate(text string) string {
 	}
 
 	var scheduledAt time.Time
-	// Try parsing as HH:mm
 	if t, err := time.Parse("15:04", timeStr); err == nil {
 		scheduledAt = reminder.CalculateInitialRun(t.Hour(), t.Minute(), recurrenceType, recurrenceDays, loc, now)
 	} else if fullT, err := time.ParseInLocation("2006-01-02 15:04", timeStr, loc); err == nil {
@@ -255,11 +271,10 @@ func (h *CommandHandler) handleCreate(text string) string {
 	)
 }
 
-func (h *CommandHandler) handleEdit(text string) string {
-	// Format: edit <id> jam <HH:mm>
-	parts := strings.Fields(text)
+func (h *CommandHandler) handleEdit(content string) string {
+	parts := strings.Fields(content)
 	if len(parts) < 4 || strings.ToLower(parts[2]) != "jam" {
-		return "Format salah. Gunakan: *edit <id> jam <HH:mm>*\nContoh: *edit 1 jam 13:00*"
+		return "Format salah. Gunakan: *!edit <id> jam <HH:mm>*\nContoh: *!edit 1 jam 13:00*"
 	}
 
 	id, err := strconv.ParseInt(parts[1], 10, 64)
@@ -291,10 +306,14 @@ func (h *CommandHandler) handleEdit(text string) string {
 		item.ID, item.Title, timeStr, item.ScheduledAt.In(loc).Format("02 Jan 15:04"))
 }
 
-func (h *CommandHandler) handleToggle(text string, active bool) string {
-	parts := strings.Fields(text)
+func (h *CommandHandler) handleToggle(content string, active bool) string {
+	parts := strings.Fields(content)
 	if len(parts) < 2 {
-		return "Format salah. Gunakan: *" + parts[0] + " <id>*"
+		cmdName := "aktifkan"
+		if !active {
+			cmdName = "nonaktifkan"
+		}
+		return "Format salah. Gunakan: *!" + cmdName + " <id>*"
 	}
 
 	id, err := strconv.ParseInt(parts[1], 10, 64)
@@ -319,10 +338,10 @@ func (h *CommandHandler) handleToggle(text string, active bool) string {
 	return fmt.Sprintf("✅ Reminder *[%d] %s* berhasil %s.", item.ID, item.Title, action)
 }
 
-func (h *CommandHandler) handleDelete(text string) string {
-	parts := strings.Fields(text)
+func (h *CommandHandler) handleDelete(content string) string {
+	parts := strings.Fields(content)
 	if len(parts) < 2 {
-		return "Format salah. Gunakan: *hapus <id>*"
+		return "Format salah. Gunakan: *!hapus <id>*"
 	}
 
 	id, err := strconv.ParseInt(parts[1], 10, 64)

@@ -208,11 +208,11 @@ const recurrenceLabel = computed(() => {
           Kirim pesan langsung ke akun WhatsApp Anda untuk mengelola alarm reminder secara instan:
         </p>
         <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/60 font-mono text-xs text-slate-800 space-y-1.5">
-          <div><b class="text-blue-600">help</b> - Panduan lengkap</div>
-          <div><b class="text-blue-600">buat Absen | 08:00 | setiap hari</b></div>
-          <div><b class="text-blue-600">buat Minum obat | 12:00 | harian</b></div>
-          <div><b class="text-blue-600">daftar</b> - Lihat daftar reminder</div>
-          <div><b class="text-blue-600">edit 1 jam 13:00</b> - Ubah jam</div>
+          <div><b class="text-blue-600">!help</b> - Panduan lengkap (atau <b class="text-blue-600">!ping</b>)</div>
+          <div><b class="text-blue-600">!buat Absen | 08:00 | setiap hari</b></div>
+          <div><b class="text-blue-600">!buat Minum obat | 12:00 | harian</b></div>
+          <div><b class="text-blue-600">!daftar</b> - Lihat daftar reminder</div>
+          <div><b class="text-blue-600">!edit 1 jam 13:00</b> - Ubah jam</div>
         </div>
       </div>
 

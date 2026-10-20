@@ -282,62 +282,131 @@ func (c *Client) handleEvent(evt interface{}) {
 }
 
 func (c *Client) handleIncomingMessage(evt *events.Message) {
-	if evt == nil || evt.Message == nil || evt.Info.IsFromMe {
+	if evt == nil || evt.Message == nil {
 		return
 	}
 
-	// Extract text content
-	text := evt.Message.GetConversation()
-	if text == "" && evt.Message.ExtendedTextMessage != nil {
-		text = evt.Message.ExtendedTextMessage.GetText()
-	}
+	// 1. Extract text content
+	text := extractMessageText(evt.Message)
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return
 	}
 
-	// Authorize sender
-	senderPhone := evt.Info.Sender.User
-	if !c.isSenderAuthorized(senderPhone) {
+	// Only process if it starts with the command prefix '!'
+	if !strings.HasPrefix(text, "!") {
 		return
 	}
 
-	// Handle command
+	// 2. Authorize sender
+	if !c.isSenderAuthorized(evt) {
+		log.Printf("[WhatsApp] Ignored command from unauthorized sender: %s (Chat: %s)\n", evt.Info.Sender.String(), evt.Info.Chat.String())
+		return
+	}
+
+	log.Printf("[WhatsApp] Received command from %s: %s\n", evt.Info.Sender.String(), text)
+
+	// 3. Handle command
 	if c.commandHandler == nil {
 		return
 	}
 
 	reply := c.commandHandler.Handle(text)
-	if reply != "" {
-		_, _ = c.waClient.SendMessage(context.Background(), evt.Info.Chat, &waE2E.Message{
-			Conversation: proto.String(reply),
-		})
+	if reply == "" {
+		return
+	}
+
+	// 4. Send reply back to the chat
+	targetJID := evt.Info.Chat.ToNonAD()
+	if targetJID.IsEmpty() {
+		targetJID = evt.Info.Sender.ToNonAD()
+	}
+
+	resp, err := c.waClient.SendMessage(context.Background(), targetJID, &waE2E.Message{
+		Conversation: proto.String(reply),
+	})
+	if err != nil {
+		log.Printf("[WhatsApp] Failed to send command reply to %s: %v\n", targetJID.String(), err)
+	} else {
+		log.Printf("[WhatsApp] Command reply sent to %s (ID: %s)\n", targetJID.String(), resp.ID)
 	}
 }
 
-func (c *Client) isSenderAuthorized(phone string) bool {
-	phone = NormalizePhone(phone)
-	if phone == "" {
+func extractMessageText(msg *waE2E.Message) string {
+	if msg == nil {
+		return ""
+	}
+	if msg.GetEphemeralMessage() != nil && msg.GetEphemeralMessage().GetMessage() != nil {
+		msg = msg.GetEphemeralMessage().GetMessage()
+	}
+	if msg.GetViewOnceMessage() != nil && msg.GetViewOnceMessage().GetMessage() != nil {
+		msg = msg.GetViewOnceMessage().GetMessage()
+	}
+	if msg.GetViewOnceMessageV2() != nil && msg.GetViewOnceMessageV2().GetMessage() != nil {
+		msg = msg.GetViewOnceMessageV2().GetMessage()
+	}
+	if msg.GetDocumentWithCaptionMessage() != nil && msg.GetDocumentWithCaptionMessage().GetMessage() != nil {
+		msg = msg.GetDocumentWithCaptionMessage().GetMessage()
+	}
+
+	if text := msg.GetConversation(); text != "" {
+		return text
+	}
+	if ext := msg.GetExtendedTextMessage(); ext != nil && ext.GetText() != "" {
+		return ext.GetText()
+	}
+	return ""
+}
+
+func (c *Client) isSenderAuthorized(evt *events.Message) bool {
+	if evt == nil {
 		return false
 	}
 
-	// 1. Check if sender is the connected device itself
+	// Candidates for sender's phone number
+	candidates := []string{
+		evt.Info.Sender.User,
+		evt.Info.SenderAlt.User,
+		evt.Info.Chat.User,
+		evt.Info.RecipientAlt.User,
+	}
+
 	c.mu.RLock()
+	var connPhone string
 	if c.waClient != nil && c.waClient.Store != nil && c.waClient.Store.ID != nil {
-		connPhone := NormalizePhone(c.waClient.Store.ID.User)
-		if connPhone != "" && connPhone == phone {
-			c.mu.RUnlock()
-			return true
-		}
+		connPhone = NormalizePhone(c.waClient.Store.ID.User)
 	}
 	c.mu.RUnlock()
 
-	// 2. Check if sender matches target_phone in database
 	targetPhone, err := c.db.GetSetting("target_phone")
-	if err == nil && targetPhone != "" {
-		if NormalizePhone(targetPhone) == phone {
+	normTargetPhone := NormalizePhone(targetPhone)
+
+	for _, raw := range candidates {
+		phone := NormalizePhone(raw)
+		if phone == "" {
+			continue
+		}
+		// 1. Is sender the bot/connected device itself?
+		if connPhone != "" && phone == connPhone {
 			return true
 		}
+		// 2. Is sender the configured target_phone?
+		if normTargetPhone != "" && phone == normTargetPhone {
+			return true
+		}
+	}
+
+	// 3. If target_phone is not yet configured, and this is a direct private chat (not a group)
+	if (normTargetPhone == "" || err != nil) && !evt.Info.IsGroup {
+		for _, raw := range candidates {
+			phone := NormalizePhone(raw)
+			if phone != "" && len(phone) >= 9 && len(phone) <= 15 {
+				_ = c.db.SetSetting("target_phone", phone)
+				log.Printf("[WhatsApp] Auto-configured target_phone to +%s from incoming command\n", phone)
+				return true
+			}
+		}
+		return true
 	}
 
 	return false
