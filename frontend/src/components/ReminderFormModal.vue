@@ -81,6 +81,15 @@ watch(
         timezone.value = 'Asia/Jakarta'
         targetPhone.value = ''
         isActive.value = true
+
+        try {
+          const cached = localStorage.getItem('app_settings_cache')
+          if (cached) {
+            const parsed = JSON.parse(cached)
+            if (parsed.timezone) timezone.value = parsed.timezone
+            if (parsed.target_phone) targetPhone.value = parsed.target_phone
+          }
+        } catch {}
       }
     }
   }

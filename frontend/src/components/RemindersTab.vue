@@ -131,9 +131,37 @@ function executeDelete(id: number) {
       </div>
     </div>
 
+    <!-- Skeleton Loading State -->
+    <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+      <div
+        v-for="i in 4"
+        :key="i"
+        class="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-sm space-y-3 animate-pulse"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div class="space-y-1.5 flex-1">
+            <div class="h-4 bg-slate-200 rounded w-1/3" />
+            <div class="h-3 bg-slate-100 rounded w-2/3" />
+          </div>
+          <div class="w-11 h-6 bg-slate-200 rounded-full" />
+        </div>
+        <div class="flex items-center gap-2 pt-1">
+          <div class="h-6 w-28 bg-slate-100 rounded-lg" />
+          <div class="h-6 w-24 bg-slate-100 rounded-lg" />
+        </div>
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+          <div class="h-4 w-20 bg-slate-100 rounded" />
+          <div class="flex gap-2">
+            <div class="h-8 w-16 bg-slate-100 rounded-xl" />
+            <div class="h-8 w-16 bg-slate-100 rounded-xl" />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Empty State -->
     <div
-      v-if="!loading && filteredReminders.length === 0"
+      v-else-if="filteredReminders.length === 0"
       class="text-center py-16 bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm space-y-3"
     >
       <div class="w-14 h-14 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">

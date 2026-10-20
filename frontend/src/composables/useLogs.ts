@@ -5,7 +5,7 @@ import type { DeliveryLog } from '../types'
 export function useLogs() {
   const logs = ref<DeliveryLog[]>([])
   const total = ref(0)
-  const loading = ref(false)
+  const loading = ref(true)
   const error = ref('')
 
   const fetchLogs = async (limit: number = 20, offset: number = 0) => {

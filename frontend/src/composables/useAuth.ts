@@ -2,9 +2,13 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { api, getAuthToken, setAuthToken } from '../api/client'
 import type { AuthStatus } from '../types'
 
+const STORAGE_KEY_SETUP_REQUIRED = 'auth_setup_required_cache'
+
 export function useAuth() {
   const isAuthenticated = ref(!!getAuthToken())
-  const setupRequired = ref(false)
+  const setupRequired = ref(
+    typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_SETUP_REQUIRED) === 'true' : false
+  )
   const isLocked = ref(false)
   const lockRemaining = ref(0)
   const loading = ref(false)
@@ -33,6 +37,9 @@ export function useAuth() {
     try {
       const data = await api.get<AuthStatus>('/api/auth/status')
       setupRequired.value = data.setup_required
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_SETUP_REQUIRED, String(data.setup_required))
+      }
       if (data.locked && data.lock_remaining_seconds > 0) {
         startLockTimer(data.lock_remaining_seconds)
       } else {
@@ -75,6 +82,9 @@ export function useAuth() {
         setAuthToken(res.token)
         isAuthenticated.value = true
         setupRequired.value = false
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_SETUP_REQUIRED, 'false')
+        }
         return true
       }
       return false

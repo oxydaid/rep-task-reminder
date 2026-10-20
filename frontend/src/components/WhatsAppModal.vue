@@ -136,10 +136,17 @@ async function handleSendTest() {
               QR Code berganti otomatis. Silakan scan segera.
             </p>
           </div>
-          <div v-else class="py-12 space-y-3">
-            <RefreshCw class="w-8 h-8 text-blue-600 animate-spin mx-auto" />
-            <div class="text-sm font-semibold text-slate-800">Menghubungkan ke server WhatsApp...</div>
-            <p class="text-xs text-slate-500">Mohon tunggu, QR Code sedang dimuat.</p>
+          <div v-else class="space-y-3">
+            <div class="inline-block p-3 rounded-2xl bg-white border border-slate-200 shadow-md">
+              <div class="w-56 h-56 rounded-xl bg-slate-100 flex flex-col items-center justify-center p-4 text-center animate-pulse">
+                <RefreshCw class="w-8 h-8 text-blue-600 animate-spin mb-3" />
+                <span class="text-xs font-semibold text-slate-700">Menyiapkan QR Code...</span>
+                <span class="text-[11px] text-slate-400 mt-1">Menghubungkan ke WhatsApp</span>
+              </div>
+            </div>
+            <p class="text-xs text-slate-400">
+              Mohon tunggu beberapa saat...
+            </p>
           </div>
 
           <div class="bg-blue-50 border border-blue-100 p-3 rounded-xl text-left text-xs text-blue-900 space-y-1">

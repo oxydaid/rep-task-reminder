@@ -25,9 +25,22 @@ const emit = defineEmits<{
   (e: 'change-pin', oldPin: string, newPin: string): void
 }>()
 
-// Settings state
-const defaultPhone = ref('')
-const defaultTz = ref('Asia/Jakarta')
+// Settings state cache
+const STORAGE_KEY_SETTINGS = 'app_settings_cache'
+
+function getCachedSettings(): { target_phone: string; timezone: string } | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SETTINGS)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return null
+}
+
+const cachedSettings = getCachedSettings()
+const defaultPhone = ref(cachedSettings?.target_phone || '')
+const defaultTz = ref(cachedSettings?.timezone || 'Asia/Jakarta')
+const loadingSettings = ref(!cachedSettings)
 const savingSettings = ref(false)
 const settingsSuccess = ref(false)
 const settingsError = ref('')
@@ -50,8 +63,16 @@ async function loadSettings() {
     const res = await api.get<AppSettings>('/api/settings')
     defaultPhone.value = res.target_phone || ''
     defaultTz.value = res.timezone || 'Asia/Jakarta'
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({
+        target_phone: defaultPhone.value,
+        timezone: defaultTz.value
+      }))
+    }
   } catch {
     // Ignore
+  } finally {
+    loadingSettings.value = false
   }
 }
 
@@ -64,6 +85,12 @@ async function saveSettings() {
       target_phone: defaultPhone.value,
       timezone: defaultTz.value,
     })
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({
+        target_phone: defaultPhone.value,
+        timezone: defaultTz.value
+      }))
+    }
     settingsSuccess.value = true
     setTimeout(() => {
       settingsSuccess.value = false
@@ -179,7 +206,20 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="space-y-3.5 pt-1">
+      <!-- Skeleton Loader -->
+      <div v-if="loadingSettings" class="space-y-4 pt-1 animate-pulse">
+        <div>
+          <div class="h-3 w-32 bg-slate-200 rounded mb-2" />
+          <div class="h-10 bg-slate-100 rounded-xl w-full" />
+        </div>
+        <div>
+          <div class="h-3 w-48 bg-slate-200 rounded mb-2" />
+          <div class="h-10 bg-slate-100 rounded-xl w-full" />
+        </div>
+        <div class="h-10 w-36 bg-slate-200 rounded-xl" />
+      </div>
+
+      <div v-else class="space-y-3.5 pt-1">
         <div>
           <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
             Zona Waktu Default

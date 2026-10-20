@@ -7,18 +7,40 @@ export interface UseRemindersOptions {
   immediate?: boolean
 }
 
-export function useReminders(options: UseRemindersOptions = {}) {
-  const reminders = ref<Reminder[]>([])
-  const upcoming = ref<Reminder | null>(null)
-  const stats = ref<Stats>({
+const STORAGE_KEY_STATS = 'reminders_stats_cache'
+
+function getCachedStats(): Stats {
+  if (typeof window === 'undefined') {
+    return {
+      total_reminders: 0,
+      active_reminders: 0,
+      inactive_reminders: 0,
+      today_reminders: 0,
+      total_sent: 0,
+      total_failed: 0,
+    }
+  }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_STATS)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return {
     total_reminders: 0,
     active_reminders: 0,
     inactive_reminders: 0,
     today_reminders: 0,
     total_sent: 0,
     total_failed: 0,
-  })
-  const loading = ref(false)
+  }
+}
+
+export function useReminders(options: UseRemindersOptions = {}) {
+  const reminders = ref<Reminder[]>([])
+  const upcoming = ref<Reminder | null>(null)
+  const stats = ref<Stats>(getCachedStats())
+  const loading = ref(true)
+  const isUpcomingLoading = ref(true)
+  const isStatsLoading = ref(typeof window !== 'undefined' ? !localStorage.getItem(STORAGE_KEY_STATS) : true)
   const error = ref('')
 
   const fetchReminders = async (status?: MaybeRefOrGetter<string>) => {
@@ -41,15 +63,24 @@ export function useReminders(options: UseRemindersOptions = {}) {
       upcoming.value = data
     } catch {
       upcoming.value = null
+    } finally {
+      isUpcomingLoading.value = false
     }
   }
 
   const fetchStats = async () => {
     try {
       const data = await api.get<Stats>('/api/stats')
-      if (data) stats.value = data
+      if (data) {
+        stats.value = data
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_STATS, JSON.stringify(data))
+        }
+      }
     } catch {
       // Ignore
+    } finally {
+      isStatsLoading.value = false
     }
   }
 
@@ -126,6 +157,8 @@ export function useReminders(options: UseRemindersOptions = {}) {
     upcoming,
     stats,
     loading,
+    isUpcomingLoading,
+    isStatsLoading,
     error,
     fetchReminders,
     fetchUpcoming,

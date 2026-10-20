@@ -53,6 +53,8 @@ const {
   upcoming,
   stats,
   loading: remLoading,
+  isUpcomingLoading,
+  isStatsLoading,
   fetchReminders,
   fetchUpcoming,
   fetchStats,
@@ -185,6 +187,8 @@ function handleOpenQR() {
           :connected-phone="connectedPhone"
           :loading="remLoading"
           :is-wa-loading="isWaLoading"
+          :is-upcoming-loading="isUpcomingLoading"
+          :is-stats-loading="isStatsLoading"
           @create="openCreateModal"
           @open-qr="handleOpenQR"
           @view-reminders="handleViewReminders"

@@ -21,6 +21,8 @@ const props = defineProps<{
   connectedPhone?: string
   loading: boolean
   isWaLoading?: boolean
+  isUpcomingLoading?: boolean
+  isStatsLoading?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -97,13 +99,30 @@ const recurrenceLabel = computed(() => {
       <div class="absolute right-12 top-6 w-20 h-20 rounded-full bg-white/10 blur-md pointer-events-none" />
 
       <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div class="space-y-3">
+        <!-- Skeleton State when Upcoming is loading -->
+        <div v-if="isUpcomingLoading" class="space-y-4 w-full max-w-lg animate-pulse py-1">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-blue-50 text-xs font-medium backdrop-blur-sm">
+            <Clock class="w-3.5 h-3.5 animate-spin" />
+            <span>Memeriksa Jadwal...</span>
+          </div>
+          <div class="space-y-2">
+            <div class="h-8 bg-white/25 rounded-xl w-3/4" />
+            <div class="h-4 bg-white/15 rounded-lg w-1/2" />
+          </div>
+          <div class="flex items-center gap-2 pt-1">
+            <div class="h-6 w-32 bg-white/20 rounded-lg" />
+            <div class="h-6 w-24 bg-white/15 rounded-lg" />
+          </div>
+        </div>
+
+        <!-- Loaded State: Has upcoming reminder -->
+        <div v-else-if="upcoming" class="space-y-3">
           <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-blue-50 text-xs font-medium backdrop-blur-sm">
             <Clock class="w-3.5 h-3.5" />
             <span>Reminder Berikutnya</span>
           </div>
 
-          <div v-if="upcoming">
+          <div>
             <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-1">
               {{ upcoming.title }}
             </h2>
@@ -123,15 +142,20 @@ const recurrenceLabel = computed(() => {
               </span>
             </div>
           </div>
+        </div>
 
-          <div v-else class="py-2">
-            <h2 class="text-xl sm:text-2xl font-bold text-white mb-1">
-              Tidak Ada Reminder Mendatang
-            </h2>
-            <p class="text-blue-100 text-xs sm:text-sm">
-              Semua jadwal telah selesai atau belum ada reminder yang aktif.
-            </p>
+        <!-- Loaded State: No upcoming reminder -->
+        <div v-else class="py-2">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-blue-50 text-xs font-medium backdrop-blur-sm mb-2">
+            <Clock class="w-3.5 h-3.5" />
+            <span>Reminder Berikutnya</span>
           </div>
+          <h2 class="text-xl sm:text-2xl font-bold text-white mb-1">
+            Tidak Ada Reminder Mendatang
+          </h2>
+          <p class="text-blue-100 text-xs sm:text-sm">
+            Semua jadwal telah selesai atau belum ada reminder yang aktif.
+          </p>
         </div>
 
         <!-- Hero Actions -->
@@ -149,49 +173,67 @@ const recurrenceLabel = computed(() => {
 
     <!-- Quick Stats Grid -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-      <!-- Active Reminders -->
-      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
-        <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-          <Bell class="w-5 h-5" />
+      <!-- Skeleton Stats Grid -->
+      <template v-if="isStatsLoading">
+        <div
+          v-for="i in 4"
+          :key="i"
+          class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5 animate-pulse"
+        >
+          <div class="w-11 h-11 rounded-xl bg-slate-100 flex-shrink-0" />
+          <div class="space-y-2 flex-1">
+            <div class="h-6 bg-slate-200 rounded-md w-12" />
+            <div class="h-3 bg-slate-100 rounded w-24" />
+          </div>
         </div>
-        <div>
-          <div class="text-2xl font-bold text-slate-900 leading-none">{{ stats.active_reminders }}</div>
-          <div class="text-xs text-slate-500 mt-1 font-medium">Reminder Aktif</div>
-        </div>
-      </div>
+      </template>
 
-      <!-- Today's Schedule -->
-      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
-        <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
-          <Calendar class="w-5 h-5" />
+      <!-- Loaded Stats Grid -->
+      <template v-else>
+        <!-- Active Reminders -->
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
+          <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+            <Bell class="w-5 h-5" />
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-slate-900 leading-none">{{ stats.active_reminders }}</div>
+            <div class="text-xs text-slate-500 mt-1 font-medium">Reminder Aktif</div>
+          </div>
         </div>
-        <div>
-          <div class="text-2xl font-bold text-slate-900 leading-none">{{ stats.today_reminders }}</div>
-          <div class="text-xs text-slate-500 mt-1 font-medium">Jadwal Hari Ini</div>
-        </div>
-      </div>
 
-      <!-- Sent -->
-      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
-        <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
-          <CheckCircle2 class="w-5 h-5" />
+        <!-- Today's Schedule -->
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
+          <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+            <Calendar class="w-5 h-5" />
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-slate-900 leading-none">{{ stats.today_reminders }}</div>
+            <div class="text-xs text-slate-500 mt-1 font-medium">Jadwal Hari Ini</div>
+          </div>
         </div>
-        <div>
-          <div class="text-2xl font-bold text-slate-900 leading-none">{{ stats.total_sent }}</div>
-          <div class="text-xs text-slate-500 mt-1 font-medium">Berhasil Terkirim</div>
-        </div>
-      </div>
 
-      <!-- Failed -->
-      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
-        <div class="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
-          <AlertCircle class="w-5 h-5" />
+        <!-- Sent -->
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
+          <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 class="w-5 h-5" />
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-slate-900 leading-none">{{ stats.total_sent }}</div>
+            <div class="text-xs text-slate-500 mt-1 font-medium">Berhasil Terkirim</div>
+          </div>
         </div>
-        <div>
-          <div class="text-2xl font-bold text-slate-900 leading-none">{{ stats.total_failed }}</div>
-          <div class="text-xs text-slate-500 mt-1 font-medium">Pengiriman Gagal</div>
+
+        <!-- Failed -->
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
+          <div class="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
+            <AlertCircle class="w-5 h-5" />
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-slate-900 leading-none">{{ stats.total_failed }}</div>
+            <div class="text-xs text-slate-500 mt-1 font-medium">Pengiriman Gagal</div>
+          </div>
         </div>
-      </div>
+      </template>
     </div>
 
     <!-- Overview Section: WhatsApp Bot Guide & Action Card -->
@@ -228,7 +270,7 @@ const recurrenceLabel = computed(() => {
           @click="emit('view-reminders')"
           class="w-full h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs flex items-center justify-center gap-2 transition"
         >
-          <span>Buka Tab Reminder ({{ stats.total_reminders }})</span>
+          <span>Buka Tab Reminder {{ isStatsLoading ? '' : `(${stats.total_reminders})` }}</span>
           <ArrowRight class="w-4 h-4" />
         </button>
       </div>

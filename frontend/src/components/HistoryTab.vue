@@ -75,9 +75,20 @@ function nextPage() {
       </button>
     </div>
 
+    <!-- Skeleton Loading State -->
+    <div v-if="loading" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden p-5 space-y-4 animate-pulse">
+      <div v-for="i in 5" :key="i" class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+        <div class="space-y-1.5 flex-1">
+          <div class="h-4 bg-slate-200 rounded w-1/4" />
+          <div class="h-3 bg-slate-100 rounded w-1/3" />
+        </div>
+        <div class="h-6 w-20 bg-slate-100 rounded-full" />
+      </div>
+    </div>
+
     <!-- Empty State -->
     <div
-      v-if="!loading && logs.length === 0"
+      v-else-if="logs.length === 0"
       class="text-center py-16 bg-white rounded-2xl border border-slate-200/80 p-8 shadow-sm space-y-3"
     >
       <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center">
