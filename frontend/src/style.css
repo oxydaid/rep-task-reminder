@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-nova-blue: #2563eb;
+    --color-nova-dark: #0f172a;
+    --color-nova-light: #f8fafc;
+    --color-spark-orange: #f97316;
+    --color-spark-green: #22c55e;
+    --color-spark-red: #ef4444;
+  }
+
+  body {
+    background-color: var(--color-nova-light);
+    color: #111827;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+}

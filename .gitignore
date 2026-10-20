@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Production build artifacts
+bin/
+frontend/dist/
+
+# SQLite databases & runtime data
+data/
+backend/data/
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Environment files
+.env
+.env.local
+
+# Agent / Harness cache
+.agents/
+skills-lock.json
+
+# OS files
+.DS_Store
+Thumbs.db

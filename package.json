@@ -1,0 +1,15 @@
+{
+  "name": "whatsapp-reminder-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently -k -p \"[{name}]\" -n \"BACKEND,FRONTEND\" -c \"blue.bold,green.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && go run ./cmd/server",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "bash ./build.sh",
+    "test": "cd backend && go test -v ./..."
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
