@@ -1,13 +1,31 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import { api } from '../api/client'
 import type { WhatsAppStatus, WhatsAppConnectionStatus } from '../types'
 
+const STORAGE_KEY_STATUS = 'wa_status'
+const STORAGE_KEY_PHONE = 'wa_connected_phone'
+
+function getCachedStatus(): WhatsAppConnectionStatus {
+  if (typeof window === 'undefined') return 'connecting'
+  const cached = localStorage.getItem(STORAGE_KEY_STATUS) as WhatsAppConnectionStatus | null
+  if (cached === 'connected' || cached === 'connecting' || cached === 'disconnected') {
+    return cached
+  }
+  return 'connecting'
+}
+
+function getCachedPhone(): string {
+  if (typeof window === 'undefined') return ''
+  return localStorage.getItem(STORAGE_KEY_PHONE) || ''
+}
+
 export function useWhatsApp() {
-  const status = ref<WhatsAppConnectionStatus>('disconnected')
-  const connectedPhone = ref('')
+  const status = ref<WhatsAppConnectionStatus>(getCachedStatus())
+  const connectedPhone = ref<string>(getCachedPhone())
   const qrCode = ref('')
   const targetPhone = ref('')
   const loading = ref(false)
+  const isInitialLoading = ref(true)
   const error = ref('')
 
   let pollInterval: any = null
@@ -16,10 +34,19 @@ export function useWhatsApp() {
     try {
       const data = await api.get<WhatsAppStatus>('/api/whatsapp/status')
       status.value = data.status
-      connectedPhone.value = data.connected_phone
+      connectedPhone.value = data.connected_phone || ''
       qrCode.value = data.qr_code_data_url || ''
       targetPhone.value = data.target_phone || ''
       error.value = ''
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_STATUS, data.status)
+        if (data.connected_phone) {
+          localStorage.setItem(STORAGE_KEY_PHONE, data.connected_phone)
+        } else if (data.status === 'disconnected') {
+          localStorage.removeItem(STORAGE_KEY_PHONE)
+        }
+      }
 
       // If status is connecting, ensure polling is active
       if (status.value === 'connecting' && !pollInterval) {
@@ -29,6 +56,8 @@ export function useWhatsApp() {
       }
     } catch (e: any) {
       error.value = e.message || 'Gagal memuat status WhatsApp'
+    } finally {
+      isInitialLoading.value = false
     }
   }
 
@@ -38,13 +67,21 @@ export function useWhatsApp() {
     try {
       const data = await api.post<WhatsAppStatus>('/api/whatsapp/connect')
       status.value = data.status
-      connectedPhone.value = data.connected_phone
+      connectedPhone.value = data.connected_phone || ''
       qrCode.value = data.qr_code_data_url || ''
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_STATUS, data.status)
+        if (data.connected_phone) {
+          localStorage.setItem(STORAGE_KEY_PHONE, data.connected_phone)
+        }
+      }
       startPolling()
     } catch (e: any) {
       error.value = e.message || 'Gagal menghubungkan WhatsApp'
     } finally {
       loading.value = false
+      isInitialLoading.value = false
     }
   }
 
@@ -55,6 +92,9 @@ export function useWhatsApp() {
       await api.post('/api/whatsapp/disconnect')
       status.value = 'disconnected'
       qrCode.value = ''
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_STATUS, 'disconnected')
+      }
       stopPolling()
     } catch (e: any) {
       error.value = e.message || 'Gagal memutuskan WhatsApp'
@@ -71,6 +111,10 @@ export function useWhatsApp() {
       status.value = 'disconnected'
       connectedPhone.value = ''
       qrCode.value = ''
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY_STATUS, 'disconnected')
+        localStorage.removeItem(STORAGE_KEY_PHONE)
+      }
       stopPolling()
     } catch (e: any) {
       error.value = e.message || 'Gagal menghapus sesi WhatsApp'
@@ -99,8 +143,18 @@ export function useWhatsApp() {
       try {
         const data = await api.get<WhatsAppStatus>('/api/whatsapp/status')
         status.value = data.status
-        connectedPhone.value = data.connected_phone
+        connectedPhone.value = data.connected_phone || ''
         qrCode.value = data.qr_code_data_url || ''
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_STATUS, data.status)
+          if (data.connected_phone) {
+            localStorage.setItem(STORAGE_KEY_PHONE, data.connected_phone)
+          } else if (data.status === 'disconnected') {
+            localStorage.removeItem(STORAGE_KEY_PHONE)
+          }
+        }
+
         if (data.status === 'connected') {
           stopPolling()
         }
@@ -117,10 +171,8 @@ export function useWhatsApp() {
     }
   }
 
-  onMounted(() => {
-    onUnmounted(() => {
-      stopPolling()
-    })
+  onUnmounted(() => {
+    stopPolling()
   })
 
   return {
@@ -129,6 +181,7 @@ export function useWhatsApp() {
     qrCode,
     targetPhone,
     loading,
+    isInitialLoading,
     error,
     fetchStatus,
     connect,

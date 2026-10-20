@@ -39,6 +39,7 @@ const {
   qrCode,
   targetPhone,
   loading: waLoading,
+  isInitialLoading: isWaLoading,
   fetchStatus: fetchWAStatus,
   connect: connectWA,
   disconnect: disconnectWA,
@@ -96,10 +97,11 @@ async function initAppData() {
 }
 
 onMounted(async () => {
-  await checkStatus()
+  // If already authenticated with token, start fetching app data immediately in parallel
   if (isAuthenticated.value) {
-    await initAppData()
+    initAppData()
   }
+  await checkStatus()
 })
 
 watch(isAuthenticated, (authenticated) => {
@@ -182,6 +184,7 @@ function handleOpenQR() {
           :wa-status="waStatus"
           :connected-phone="connectedPhone"
           :loading="remLoading"
+          :is-wa-loading="isWaLoading"
           @create="openCreateModal"
           @open-qr="handleOpenQR"
           @view-reminders="handleViewReminders"

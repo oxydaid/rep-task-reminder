@@ -20,6 +20,7 @@ const props = defineProps<{
   waStatus: WhatsAppConnectionStatus
   connectedPhone?: string
   loading: boolean
+  isWaLoading?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -57,28 +58,37 @@ const recurrenceLabel = computed(() => {
 
 <template>
   <div class="space-y-6 pb-20 md:pb-8">
-    <!-- WhatsApp Alert Banner if Disconnected -->
-    <div
-      v-if="waStatus === 'disconnected'"
-      class="p-4 rounded-2xl bg-amber-500/10 border border-amber-300/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm"
+    <!-- WhatsApp Alert Banner if Disconnected (hidden while verifying to prevent FOUC) -->
+    <Transition
+      enter-active-class="transition-all duration-300 ease-out"
+      enter-from-class="opacity-0 -translate-y-2 max-h-0 overflow-hidden"
+      enter-to-class="opacity-100 translate-y-0 max-h-40"
+      leave-active-class="transition-all duration-200 ease-in"
+      leave-from-class="opacity-100 translate-y-0 max-h-40"
+      leave-to-class="opacity-0 -translate-y-2 max-h-0 overflow-hidden"
     >
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center flex-shrink-0">
-          <WifiOff class="w-5 h-5" />
-        </div>
-        <div>
-          <div class="font-bold text-slate-900 text-sm">WhatsApp Belum Terhubung</div>
-          <div class="text-xs text-slate-600">Scan QR Code agar reminder dapat dikirimkan tepat waktu.</div>
-        </div>
-      </div>
-      <button
-        @click="emit('open-qr')"
-        class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition shadow-sm"
+      <div
+        v-if="waStatus === 'disconnected' && !isWaLoading"
+        class="p-4 rounded-2xl bg-amber-500/10 border border-amber-300/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm"
       >
-        <QrCode class="w-4 h-4" />
-        <span>Hubungkan WhatsApp</span>
-      </button>
-    </div>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 flex items-center justify-center flex-shrink-0">
+            <WifiOff class="w-5 h-5" />
+          </div>
+          <div>
+            <div class="font-bold text-slate-900 text-sm">WhatsApp Belum Terhubung</div>
+            <div class="text-xs text-slate-600">Scan QR Code agar reminder dapat dikirimkan tepat waktu.</div>
+          </div>
+        </div>
+        <button
+          @click="emit('open-qr')"
+          class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition shadow-sm flex-shrink-0"
+        >
+          <QrCode class="w-4 h-4" />
+          <span>Hubungkan WhatsApp</span>
+        </button>
+      </div>
+    </Transition>
 
     <!-- Hero Card: Next Upcoming Reminder -->
     <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-6 sm:p-8 shadow-xl shadow-blue-500/15">
