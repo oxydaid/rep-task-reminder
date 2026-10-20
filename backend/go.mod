@@ -1,6 +1,6 @@
 module whatsapp-reminder/backend
 
-go 1.27.2
+go 1.26.0
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.15
@@ -10,7 +10,7 @@ require (
 	go.mau.fi/whatsmeow v0.0.0-20261017175727-b2b1e71d45e2
 	golang.org/x/crypto v0.58.0
 	google.golang.org/protobuf v1.36.12
-	modernc.org/sqlite v1.60.1
+	modernc.org/sqlite v1.37.0
 )
 
 require (
@@ -41,7 +41,7 @@ require (
 	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
-	modernc.org/libc v1.77.1 // indirect
+	modernc.org/libc v1.62.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )

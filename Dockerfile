@@ -12,11 +12,14 @@ RUN npm install
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Build Backend
-FROM golang:1.24-alpine AS backend-builder
+# Stage 2: Build Backend (Menggunakan Golang Alpine Terbaru)
+FROM golang:alpine AS backend-builder
 WORKDIR /app/backend
 
-# Install build dependencies if needed
+# Aktifkan auto toolchain agar dapat mendownload versi Go yang dibutuhkan secara otomatis
+ENV GOTOOLCHAIN=auto
+
+# Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
 COPY backend/go.mod backend/go.sum* ./
