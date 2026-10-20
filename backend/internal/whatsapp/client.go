@@ -5,9 +5,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/skip2/go-qrcode"
 	"go.mau.fi/whatsmeow"
@@ -31,10 +33,10 @@ const (
 )
 
 type ClientStatus struct {
-	Status        ConnectionStatus `json:"status"`
-	ConnectedPhone string          `json:"connected_phone"`
-	QRCodeDataURL  string          `json:"qr_code_data_url,omitempty"`
-	TargetPhone    string          `json:"target_phone"`
+	Status         ConnectionStatus `json:"status"`
+	ConnectedPhone string           `json:"connected_phone"`
+	QRCodeDataURL  string           `json:"qr_code_data_url,omitempty"`
+	TargetPhone    string           `json:"target_phone"`
 }
 
 type Client struct {
@@ -46,7 +48,6 @@ type Client struct {
 	qrDataURL      string
 	qrRaw          string
 	mu             sync.RWMutex
-	stopQRChan     chan struct{}
 }
 
 func NewClient(db *database.DB, cmdHandler *CommandHandler, sessionDBPath string) (*Client, error) {
@@ -67,7 +68,7 @@ func NewClient(db *database.DB, cmdHandler *CommandHandler, sessionDBPath string
 	return c, nil
 }
 
-// Start loads first device or creates new, and initiates connection if session exists
+// Start loads first device or creates new, and initiates connection if paired session exists
 func (c *Client) Start() error {
 	deviceStore, err := c.container.GetFirstDevice(context.Background())
 	if err != nil {
@@ -79,7 +80,7 @@ func (c *Client) Start() error {
 	c.waClient.AddEventHandler(c.handleEvent)
 
 	if c.waClient.Store.ID != nil {
-		// Session exists, connect
+		// Session exists, connect in background
 		c.mu.Lock()
 		c.status = StatusConnecting
 		c.mu.Unlock()
@@ -89,46 +90,68 @@ func (c *Client) Start() error {
 	return nil
 }
 
-// Connect starts WhatsApp connection and initiates QR pairing if needed
+// Connect starts WhatsApp connection and initiates QR pairing if not yet paired
 func (c *Client) Connect() error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	if c.waClient == nil {
+		c.mu.Unlock()
 		return errors.New("client belum diinisialisasi")
 	}
 
-	if c.waClient.IsConnected() {
+	// 1. If already paired and logged in
+	if c.waClient.Store.ID != nil && c.waClient.IsLoggedIn() {
 		c.status = StatusConnected
+		c.qrDataURL = ""
+		c.qrRaw = ""
+		c.mu.Unlock()
 		return nil
+	}
+
+	// 2. If already paired device, but disconnected -> reconnect
+	if c.waClient.Store.ID != nil {
+		c.status = StatusConnecting
+		c.qrDataURL = ""
+		c.qrRaw = ""
+		c.mu.Unlock()
+		if !c.waClient.IsConnected() {
+			return c.waClient.Connect()
+		}
+		return nil
+	}
+
+	// 3. Unpaired device: must get QR channel and connect
+	// If websocket is already open without QR channel, disconnect first
+	if c.waClient.IsConnected() {
+		c.waClient.Disconnect()
 	}
 
 	c.status = StatusConnecting
 	c.qrDataURL = ""
 	c.qrRaw = ""
 
-	if c.waClient.Store.ID == nil {
-		// No session yet -> listen for QR channel
-		qrChan, err := c.waClient.GetQRChannel(context.Background())
-		if err != nil {
-			c.status = StatusDisconnected
-			return fmt.Errorf("failed to get qr channel: %w", err)
-		}
+	qrChan, err := c.waClient.GetQRChannel(context.Background())
+	if err != nil {
+		c.status = StatusDisconnected
+		c.mu.Unlock()
+		return fmt.Errorf("failed to get qr channel: %w", err)
+	}
 
-		err = c.waClient.Connect()
-		if err != nil {
-			c.status = StatusDisconnected
-			return fmt.Errorf("failed to connect: %w", err)
-		}
+	err = c.waClient.Connect()
+	if err != nil {
+		c.status = StatusDisconnected
+		c.mu.Unlock()
+		return fmt.Errorf("failed to connect: %w", err)
+	}
 
-		go c.listenForQR(qrChan)
-	} else {
-		// Existing session
-		err := c.waClient.Connect()
-		if err != nil {
-			c.status = StatusDisconnected
-			return err
-		}
+	qrReady := make(chan struct{}, 1)
+	go c.listenForQR(qrChan, qrReady)
+	c.mu.Unlock()
+
+	// Wait briefly (up to 1.5s) so the immediate response contains QR code
+	select {
+	case <-qrReady:
+	case <-time.After(1500 * time.Millisecond):
 	}
 
 	return nil
@@ -172,13 +195,16 @@ func (c *Client) Logout() error {
 	c.waClient = whatsmeow.NewClient(deviceStore, clientLog)
 	c.waClient.AddEventHandler(c.handleEvent)
 
+	log.Println("[WhatsApp] Device session deleted (unpaired). Fresh device ready.")
 	return nil
 }
 
-func (c *Client) listenForQR(qrChan <-chan whatsmeow.QRChannelItem) {
+func (c *Client) listenForQR(qrChan <-chan whatsmeow.QRChannelItem, qrReady chan<- struct{}) {
+	first := true
 	for item := range qrChan {
 		switch item.Event {
 		case "code":
+			log.Printf("[WhatsApp] New QR code received, generating image...\n")
 			pngBytes, err := qrcode.Encode(item.Code, qrcode.Medium, 280)
 			if err == nil {
 				dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes)
@@ -188,7 +214,15 @@ func (c *Client) listenForQR(qrChan <-chan whatsmeow.QRChannelItem) {
 				c.status = StatusConnecting
 				c.mu.Unlock()
 			}
+			if first {
+				first = false
+				select {
+				case qrReady <- struct{}{}:
+				default:
+				}
+			}
 		case "success":
+			log.Printf("[WhatsApp] QR pairing successful!\n")
 			c.mu.Lock()
 			c.status = StatusConnected
 			c.qrDataURL = ""
@@ -196,6 +230,7 @@ func (c *Client) listenForQR(qrChan <-chan whatsmeow.QRChannelItem) {
 			c.mu.Unlock()
 			return
 		case "timeout":
+			log.Printf("[WhatsApp] QR pairing timed out.\n")
 			c.mu.Lock()
 			c.status = StatusDisconnected
 			c.qrDataURL = ""
@@ -210,9 +245,20 @@ func (c *Client) handleEvent(evt interface{}) {
 	switch v := evt.(type) {
 	case *events.Connected:
 		c.mu.Lock()
+		if c.waClient.Store.ID != nil && c.waClient.IsLoggedIn() {
+			c.status = StatusConnected
+			c.qrDataURL = ""
+			c.qrRaw = ""
+			log.Printf("[WhatsApp] Authenticated & connected as +%s\n", c.waClient.Store.ID.User)
+		}
+		c.mu.Unlock()
+
+	case *events.PairSuccess:
+		c.mu.Lock()
 		c.status = StatusConnected
 		c.qrDataURL = ""
 		c.qrRaw = ""
+		log.Printf("[WhatsApp] Pair success! Connected as +%s\n", v.ID.User)
 		c.mu.Unlock()
 
 	case *events.LoggedOut:
@@ -220,11 +266,12 @@ func (c *Client) handleEvent(evt interface{}) {
 		c.status = StatusDisconnected
 		c.qrDataURL = ""
 		c.qrRaw = ""
+		log.Println("[WhatsApp] Device logged out")
 		c.mu.Unlock()
 
 	case *events.Disconnected:
 		c.mu.Lock()
-		if c.status != StatusConnecting {
+		if c.status == StatusConnected || c.status != StatusConnecting {
 			c.status = StatusDisconnected
 		}
 		c.mu.Unlock()
@@ -302,13 +349,28 @@ func (c *Client) GetStatus() *ClientStatus {
 	defer c.mu.RUnlock()
 
 	var connPhone string
+	isLoggedIn := false
+
 	if c.waClient != nil && c.waClient.Store != nil && c.waClient.Store.ID != nil {
 		connPhone = c.waClient.Store.ID.User
+		isLoggedIn = c.waClient.IsLoggedIn()
 	}
 
-	status := c.status
-	if c.waClient != nil && c.waClient.IsConnected() {
+	var status ConnectionStatus
+	if isLoggedIn {
 		status = StatusConnected
+	} else if c.waClient != nil && c.waClient.Store != nil && c.waClient.Store.ID != nil {
+		if c.waClient.IsConnected() || c.status == StatusConnecting {
+			status = StatusConnecting
+		} else {
+			status = StatusDisconnected
+		}
+	} else {
+		if c.status == StatusConnecting {
+			status = StatusConnecting
+		} else {
+			status = StatusDisconnected
+		}
 	}
 
 	targetPhone, _ := c.db.GetSetting("target_phone")
@@ -326,8 +388,8 @@ func (c *Client) SendMessage(targetPhone string, messageText string) error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if c.waClient == nil || !c.waClient.IsConnected() {
-		return errors.New("whatsapp belum terhubung")
+	if c.waClient == nil || !c.waClient.IsConnected() || !c.waClient.IsLoggedIn() || c.waClient.Store.ID == nil {
+		return errors.New("whatsapp belum terhubung atau belum login")
 	}
 
 	phone := NormalizePhone(targetPhone)

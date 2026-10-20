@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { QrCode, RefreshCw, Smartphone, LogOut, Send, CheckCircle2, X } from 'lucide-vue-next'
 import type { WhatsAppConnectionStatus } from '../types'
 
@@ -19,6 +19,8 @@ const emit = defineEmits<{
   (e: 'logout'): void
   (e: 'send-test', phone: string, message: string): void
 }>()
+
+const isConnected = computed(() => props.status === 'connected' && !!props.connectedPhone)
 
 const testPhone = ref(props.targetPhone || '')
 const testMessage = ref('Halo! Ini adalah pesan uji coba WhatsApp Reminder.')
@@ -65,15 +67,15 @@ async function handleSendTest() {
 
       <!-- Modal Body -->
       <div class="p-6">
-        <!-- Case 1: Connected -->
-        <div v-if="status === 'connected'" class="text-center space-y-5">
+        <!-- Case 1: Connected with verified phone -->
+        <div v-if="isConnected" class="text-center space-y-5">
           <div class="w-14 h-14 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
             <CheckCircle2 class="w-8 h-8" />
           </div>
           <div>
             <h3 class="font-bold text-slate-900 text-lg">WhatsApp Terhubung!</h3>
             <p class="text-sm text-slate-500 mt-1">
-              Akun aktif: <span class="font-semibold text-slate-800 font-mono">+{{ connectedPhone || 'Akun Anda' }}</span>
+              Akun aktif: <span class="font-semibold text-slate-800 font-mono">+{{ connectedPhone }}</span>
             </p>
           </div>
 
@@ -125,7 +127,7 @@ async function handleSendTest() {
         </div>
 
         <!-- Case 2: Connecting / Scan QR -->
-        <div v-else-if="status === 'connecting'" class="text-center space-y-4">
+        <div v-else-if="status === 'connecting' || qrCode" class="text-center space-y-4">
           <div v-if="qrCode" class="space-y-3">
             <div class="inline-block p-3 rounded-2xl bg-white border border-slate-200 shadow-md">
               <img :src="qrCode" alt="Scan QR WhatsApp" class="w-56 h-56 mx-auto object-contain" />
@@ -148,6 +150,23 @@ async function handleSendTest() {
               <li>Pilih <b>Tautkan Perangkat</b></li>
               <li>Arahkan kamera ke QR Code di atas</li>
             </ol>
+          </div>
+
+          <div class="flex gap-2 pt-2">
+            <button
+              @click="emit('connect')"
+              :disabled="loading"
+              class="flex-1 h-9 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition"
+            >
+              <RefreshCw :class="['w-3.5 h-3.5', loading ? 'animate-spin' : '']" />
+              <span>Muat Ulang QR</span>
+            </button>
+            <button
+              @click="emit('close')"
+              class="h-9 px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium rounded-xl transition"
+            >
+              Tutup
+            </button>
           </div>
         </div>
 

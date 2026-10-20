@@ -142,7 +142,7 @@ function handleViewReminders() {
 
 function handleOpenQR() {
   showQAModal.value = true
-  if (waStatus.value === 'disconnected') {
+  if (waStatus.value === 'disconnected' || (waStatus.value === 'connecting' && !qrCode.value)) {
     connectWA()
   }
 }
