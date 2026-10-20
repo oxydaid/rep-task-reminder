@@ -31,7 +31,7 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
     OUTPUT_BIN="$OUTPUT_BIN.exe"
 fi
 
-go build -v -o "$OUTPUT_BIN" ./cmd/server
+go build -ldflags="-s -w" -o "$OUTPUT_BIN" ./cmd/server
 
 echo ""
 echo "=========================================="
