@@ -82,8 +82,10 @@ reminder/
 ├── bin/                     # Output binary eksekusi
 ├── build.sh                 # Single script build (Frontend + Backend) untuk Linux/VPS
 ├── build.bat                # Single script build untuk Windows
-├── Dockerfile               # Multi-stage Docker build
-├── compose.yaml             # Docker Compose orchestration
+├── .nvmrc                   # Pin Node.js versi LTS aman (v24.22.1)
+├── .node-version            # Format versi Node.js untuk fnm / asdf
+├── Dockerfile               # Multi-stage Docker build (Node 24 LTS + Alpine)
+├── compose.yaml             # Docker Compose orchestration (Hardened security)
 ├── ecosystem.config.cjs     # Konfigurasi PM2 process manager
 ├── DESIGN.md                # Design System specification
 ├── PRD.md                   # Product Requirements Document
@@ -93,7 +95,28 @@ reminder/
 
 ---
 
-## 3. Menjalankan Aplikasi Secara Lokal (Development)
+## 3. Prasyarat Sistem & Kepatuhan Keamanan (Security Releases Oktober 2026)
+
+Berdasarkan buletin keamanan resmi Node.js ([Security Releases Oktober 2026](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)), sistem ini telah dikonfigurasi agar patuh terhadap standar keamanan terbaru yang memitigasi kerentanan kritis:
+- **CVE-2026-105482 (High):** `dns.resolve` truncates names containing NUL char.
+- **CVE-2026-105483 & CVE-2026-106069 (High):** TLS certificate hostname bypass (fullwidth IP / loose DNS resolution).
+- **CVE-2026-111497 (High):** Node.js Brotli decoder out-of-bounds write RCE.
+- **CVE-2026-105481 (Medium):** HTTP Keep-alive socket response desynchronization.
+- **ca-cert:** Mitigasi kompromi eMudhra Intermediate CA melalui pembaruan bundle CA sertifikat.
+
+### Versi Minimal yang Didukung:
+- **Node.js:** `>= 24.22.1` (Latest LTS direkomendasikan) atau `>= 22.23.4` / `>= 26.12.1`.
+- **Go:** `>= 1.27.2`.
+- **NPM:** `>= 10.0.0`.
+
+Anda dapat memverifikasi status kepatuhan keamanan Node.js lokal/server kapan saja dengan menjalankan:
+```bash
+npm run check:node
+```
+
+---
+
+## 4. Menjalankan Aplikasi Secara Lokal (Development)
 
 Anda dapat menjalankan **Backend (Go Fiber)** dan **Frontend (Vue 3 Vite)** secara bersamaan hanya dengan **1 perintah** atau **1 file**:
 
@@ -121,7 +144,7 @@ Tekan `Ctrl + C` untuk menghentikan kedua server sekaligus secara aman.
 
 ---
 
-## 4. Build Otomatis (Single File Build)
+## 5. Build Otomatis (Single File Build)
 
 Untuk mem-build Frontend sekaligus Backend menjadi 1 paket binary yang siap dijalankan di server:
 
@@ -137,16 +160,24 @@ build.bat
 ```
 
 Script ini akan:
-1. Meng-compile aset frontend Vue 3 menjadi static bundle di `frontend/dist`.
-2. Meng-compile backend Go menjadi binary mandiri di `bin/whatsapp-reminder`.
-3. Menyiapkan folder data dan backup database.
+1. Memeriksa kepatuhan keamanan Node.js lokal/server terhadap buletin keamanan Oktober 2026.
+2. Meng-compile aset frontend Vue 3 menjadi static bundle di `frontend/dist`.
+3. Meng-compile backend Go menjadi binary mandiri berkinerja tinggi di `bin/whatsapp-reminder`.
+4. Menyiapkan folder data dan backup database secara otomatis.
 
 ---
 
-## 5. Deployment ke Production
+## 6. Deployment ke Production
 
 ### A. Deployment Menggunakan Docker Compose (Direkomendasikan)
 
+Konfigurasi Docker telah diperkuat (*security-hardened*) dan siap untuk lingkungan production:
+- **Frontend Builder:** Menggunakan image `node:24-alpine` (Node.js 24 LTS yang telah dipatch terhadap CVE Oktober 2026).
+- **CA Certificates:** Menjalankan `update-ca-certificates` pada stage builder & runner untuk memitigasi kompromi sertifikat perantara (eMudhra CA).
+- **Container Isolation:** Menjalankan user non-root (`appuser`), proteksi `no-new-privileges:true`, dan proses init container (`init: true`).
+- **Graceful Shutdown:** `stop_grace_period: 15s` untuk menjamin SQLite WAL flush dan whatsmeow disconnection berjalan tanpa kehilangan data.
+
+Langkah deploy:
 1. Pastikan Docker dan Docker Compose terinstall di server.
 2. Clone repository dan siapkan `.env`:
    ```bash
@@ -165,20 +196,40 @@ Script ini akan:
 
 ---
 
-### B. Deployment Menggunakan PM2 di VPS
+### B. Deployment Menggunakan PM2 di VPS (Native)
 
-PM2 digunakan untuk memantau proses Go, auto-restart jika crash, dan logging.
+Pada deployment native, PM2 bertindak sebagai process manager untuk memantau binary Go. Karena PM2 berjalan di atas Node.js, pastikan Node.js pada VPS telah diperbarui ke versi yang aman.
 
-1. Build aplikasi:
+1. **Pastikan Versi Node.js di VPS Aman:**
+   Jika menggunakan NVM:
+   ```bash
+   nvm install 24.22.1
+   nvm use 24.22.1
+   nvm alias default 24.22.1
+   npm install -g pm2
+   pm2 update
+   ```
+   Verifikasi dengan:
+   ```bash
+   npm run check:node
+   ```
+
+2. **Build Aplikasi:**
    ```bash
    chmod +x build.sh
    ./build.sh
    ```
-2. Jalankan proses dengan PM2:
+
+3. **Jalankan Proses dengan PM2:**
    ```bash
    pm2 start ecosystem.config.cjs
    ```
-3. Perintah PM2 yang sering digunakan:
+   Konfigurasi `ecosystem.config.cjs` telah dioptimalkan dengan:
+   - `kill_timeout: 10000` (10 detik) untuk graceful database close.
+   - `min_uptime: '10s'` dan `max_restarts: 10` untuk mencegah crash-loop tak terkendali.
+   - `restart_delay: 3000` untuk jeda pemulihan restart yang stabil.
+
+4. **Perintah PM2 yang Sering Digunakan:**
    ```bash
    # Melihat status aplikasi
    pm2 status
@@ -197,7 +248,7 @@ PM2 digunakan untuk memantau proses Go, auto-restart jika crash, dan logging.
 
 ---
 
-## 6. Setup Reverse Proxy & HTTPS (Nginx)
+## 7. Setup Reverse Proxy & HTTPS (Nginx)
 
 Untuk menghubungkan domain dan sertifikat SSL Let's Encrypt:
 
@@ -225,7 +276,7 @@ certbot --nginx -d reminder.domainanda.com
 
 ---
 
-## 7. Cara Scan QR WhatsApp Pertama Kali
+## 8. Cara Scan QR WhatsApp Pertama Kali
 
 1. Buka Dashboard Web pada browser Anda (`http://localhost:8080` atau domain Anda).
 2. Jika pertama kali membuka, sistem meminta Anda membuat **PIN Dashboard** (4–12 digit). Masukkan dan konfirmasi PIN Anda.
@@ -238,7 +289,7 @@ certbot --nginx -d reminder.domainanda.com
 
 ---
 
-## 8. Backup dan Restore Database
+## 9. Backup dan Restore Database
 
 ### Membuat Backup Aman
 Aplikasi menyediakan fungsi backup konsisten berbasis SQLite `VACUUM INTO`:
@@ -260,7 +311,7 @@ Jika ingin memulihkan database dari file backup:
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 - **QR Code tidak muncul / Kadaluwarsa:**  
   Klik tombol *Segarkan* atau *Tampilkan QR Code* pada modal koneksi WhatsApp di dashboard.
@@ -278,5 +329,5 @@ Jika ingin memulihkan database dari file backup:
 
 ---
 
-## 10. Lisensi
+## 11. Lisensi
 Didistribusikan untuk penggunaan pribadi dan self-hosted sesuai spesifikasi `PRD.md`.

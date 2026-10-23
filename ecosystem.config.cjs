@@ -8,6 +8,10 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '300M',
+      min_uptime: '10s',
+      max_restarts: 10,
+      restart_delay: 3000,
+      kill_timeout: 10000,
       env: {
         NODE_ENV: 'production',
         PORT: '8080',
@@ -20,7 +24,6 @@ module.exports = {
       error_file: './data/logs/pm2-error.log',
       out_file: './data/logs/pm2-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
-      kill_timeout: 5000,
     },
   ],
 }

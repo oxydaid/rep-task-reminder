@@ -2,12 +2,12 @@
 # Multi-stage Dockerfile: WhatsApp Reminder
 # ==========================================
 
-# Stage 1: Build Frontend
-FROM node:22-alpine AS frontend-builder
+# Stage 1: Build Frontend (Node.js 24 LTS - Patched Security Release Oct 2026)
+FROM node:24-alpine AS frontend-builder
 WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm ci || npm install
 
 COPY frontend/ ./
 RUN npm run build
@@ -19,8 +19,8 @@ WORKDIR /app/backend
 # Aktifkan auto toolchain agar dapat mendownload versi Go yang dibutuhkan secara otomatis
 ENV GOTOOLCHAIN=auto
 
-# Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata
+# Install build dependencies & update CA certs
+RUN apk add --no-cache git ca-certificates tzdata && update-ca-certificates
 
 COPY backend/go.mod backend/go.sum* ./
 RUN go mod download
@@ -33,6 +33,7 @@ FROM alpine:3.21 AS runner
 WORKDIR /app
 
 RUN apk add --no-cache ca-certificates tzdata curl \
+    && update-ca-certificates \
     && addgroup -S appgroup && adduser -S appuser -G appgroup \
     && mkdir -p /app/data /app/data/backups /app/data/logs \
     && chown -R appuser:appgroup /app
