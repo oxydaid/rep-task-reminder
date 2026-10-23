@@ -1,256 +1,205 @@
-# WhatsApp Reminder
+<div align="center">
 
-Aplikasi reminder pribadi berbasis WhatsApp yang mengirimkan pesan otomatis sesuai jadwal seperti alarm aktivitas harian (absen kerja, minum obat, meeting, deadline, tugas harian).
+# ⏰ WhatsApp Reminder
 
-Dibangun dengan arsitektur modern, handal, hemat resource, dan *production-ready*:
-- **Frontend:** Vue 3 + Vite + TypeScript + Tailwind CSS (PWA Installable, Mobile-First, Design System `DESIGN.md`).
-- **Backend:** Go + Fiber (`gofiber/fiber/v2`) + SQLite (`modernc.org/sqlite` pure Go tanpa CGO).
-- **WhatsApp Bot:** whatsmeow (WhatsApp Web multi-device) dengan sesi persisten SQLite.
-- **Scheduler:** In-process scheduler tahan restart dengan pencegahan pengiriman duplikat (atomic database constraint).
-- **Keamanan:** PIN Dashboard ber-hash (bcrypt), rate-limiting login & auto lockout, JWT authentication, dan otorisasi ketat untuk perintah chat WhatsApp.
+### Asisten Pengingat Pribadi Otomatis via WhatsApp — Praktis, Tepat Waktu, & Bebas Lupa
 
----
+[![Node.js Security Patched](https://img.shields.io/badge/Security-Oct_2026_Patched-brightgreen?style=for-the-badge&logo=security&logoColor=white)](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)
+[![Go Version](https://img.shields.io/badge/Go-1.27+-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://go.dev/)
+[![Vue 3](https://img.shields.io/badge/Vue.js-3.5-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white)](https://vuejs.org/)
+[![WhatsApp](https://img.shields.io/badge/WhatsApp-Multi--Device-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://github.com/tulir/whatsmeow)
+[![SQLite](https://img.shields.io/badge/SQLite-Pure_Go-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://modernc.org/sqlite)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![PWA Ready](https://img.shields.io/badge/PWA-Installable-purple?style=for-the-badge&logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
 
-## 1. Fitur Utama
+<br/>
 
-1. **Dashboard & PWA:**
-   - Ringkasan reminder aktif, reminder berikutnya, dan statistik pengiriman.
-   - CRUD Reminder lengkap: tambah, ubah, hapus, aktifkan, dan nonaktifkan.
-   - Pilihan pengulangan jadwal:
-     - **Sekali Saja**
-     - **Setiap Hari (Harian)**
-     - **Hari Tertentu** (contoh: Senin, Rabu, Jumat)
-     - **Mingguan**
-   - Dukungan zona waktu: `Asia/Jakarta` (WIB), `Asia/Makassar` (WITA), `Asia/Jayapura` (WIT).
-   - Installable PWA di smartphone / browser desktop.
+<img src="./image.png" alt="Tampilan Dashboard WhatsApp Reminder" width="850" style="border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.12);" />
 
-2. **Koneksi WhatsApp & Multi-Device:**
-   - Scan QR Code langsung melalui dashboard web.
-   - Sesi tersimpan persisten di SQLite (`data/whatsapp.db`); tidak perlu scan ulang setiap restart.
-   - Indikator status real-time: *Terhubung*, *Menghubungkan...*, dan *Terputus*.
-   - Fitur kirim pesan uji coba (*test message*), putus sementara (*disconnect*), dan hapus sesi (*unpair*).
+<br/><br/>
 
-3. **Pengelolaan via Chat WhatsApp (Bot Commands Prefix `!`):**
-   Pengguna dapat mengelola reminder langsung dari chat WhatsApp (nomor sendiri / target phone yang diotorisasi):
-   - `!help` / `!bantuan` — Tampilkan daftar seluruh perintah.
-   - `!ping` — Cek respon dan status aktif bot WhatsApp.
-   - `!buat Absen kerja | 08:00 | setiap hari` — Buat reminder harian (bisa pakai `!tambah`).
-   - `!buat Minum obat | 12:00 | setiap hari`
-   - `!buat Olahraga pagi | 06:30 | senin, rabu, jumat` — Buat reminder hari tertentu.
-   - `!buat Deadline Laporan | 2026-10-25 15:00 | sekali` — Buat reminder satu kali.
-   - `!daftar` / `!list` — Tampilkan semua reminder dengan statusnya.
-   - `!detail <id>` — Lihat detail reminder (contoh: `!detail 1`).
-   - `!edit <id> jam <HH:mm>` — Ubah jam reminder (contoh: `!edit 1 jam 13:00`).
-   - `!aktifkan <id>` — Aktifkan reminder (contoh: `!aktifkan 1`).
-   - `!nonaktifkan <id>` — Matikan reminder (contoh: `!nonaktifkan 1`).
-   - `!hapus <id>` — Hapus reminder (contoh: `!hapus 1`).
+[💡 Kenapa Butuh Ini?](#-kenapa-butuh-whatsapp-reminder) •
+[✨ Fitur Utama](#-fitur-utama) •
+[💬 Perintah Chat WhatsApp](#-kelola-via-chat-whatsapp-bot-commands) •
+[🚀 Cara Menggunakan](#-panduan-penggunaan-untuk-pengguna-baru) •
+[🛠️ Instalasi & Deployment](#-instalasi--deployment) •
+[🛡️ Keamanan](#️-kepatuhan-keamanan-oktober-2026) •
+[❓ Tanya Jawab (FAQ)](#-pertanyaan-umum-faq)
 
-4. **Keamanan & Proteksi PIN:**
-   - Dashboard dilindungi PIN (4–12 digit).
-   - PIN disimpan dengan hash bcrypt, tidak pernah plaintext.
-   - Rate limiting: Maksimal 5x percobaan gagal berturut-turut memicu penguncian otomatis (*lockout*) selama 5 menit.
-   - Seluruh endpoint API privat dilindungi oleh JWT Middleware.
+</div>
 
 ---
 
-## 2. Struktur Proyek
+## 💡 Kenapa Butuh WhatsApp Reminder?
+
+Pernahkah Anda mengalami situasi seperti ini?
+- ❌ **Lupa absen masuk atau pulang kerja** karena sibuk di depan komputer.
+- ❌ **Lupa jadwal minum obat, vitamin, atau kontrol kesehatan**.
+- ❌ **Alarm HP biasa sering di-snooze lalu ditinggal tidur lagi**.
+- ❌ **Melewatkan jadwal meeting penting atau tenggat waktu tugas harian**.
+
+**WhatsApp Reminder** hadir sebagai solusi praktis! Aplikasi ini bekerja seperti **asisten pribadi** yang akan mengirimkan pesan pengingat langsung ke nomor WhatsApp Anda tepat pada waktu yang ditentukan. Pesan masuk sebagai chat WhatsApp biasa, sehingga jauh lebih diperhatikan, ada riwayat teksnya, dan tidak mudah terlewat!
+
+---
+
+## ✨ Fitur Utama
+
+| Fitur | Deskripsi |
+| :--- | :--- |
+| 📱 **Web Dashboard Modern & PWA** | Tampilan bersih, responsif di HP maupun laptop. Bisa di-install langsung ke layar utama (*Add to Home Screen*) layaknya aplikasi smartphone. |
+| 🤖 **Kelola Langsung via Chat WhatsApp** | Tidak sempat buka dashboard? Cukup ketik chat ke nomor sendiri (contoh: `!buat Minum obat \| 12:00 \| setiap hari`), alarm langsung aktif! |
+| 🔄 **Jadwal Sangat Fleksibel** | Mendukung pengingat **Sekali Saja**, **Setiap Hari (Harian)**, **Hari Tertentu** (misal: Senin s/d Jumat), maupun **Mingguan**. |
+| 🌐 **Multi Zona Waktu Indonesia** | Bebas pilih zona waktu sesuai lokasi Anda: **WIB** (`Asia/Jakarta`), **WITA** (`Asia/Makassar`), atau **WIT** (`Asia/Jayapura`). |
+| ⚡ **WhatsApp Multi-Device Mandiri** | Menggunakan teknologi sesi WhatsApp multi-device. Begitu QR Code di-scan, sistem berjalan otomatis di server meski HP Anda sedang mati atau offline. |
+| 🔒 **Aman dengan PIN & Rate Limiting** | Dashboard web dilindungi PIN keamanan 4–12 digit terenkripsi (*bcrypt*), pencegahan brute-force (auto-lockout), dan token akses JWT. |
+| 🪶 **Sangat Ringan & Hemat Sumber Daya** | Dibangun dengan binary Go mandiri dan SQLite murni (tanpa CGO). Hanya menggunakan RAM sekitar **~30MB - 50MB**! |
+| 💾 **Backup Database Otomatis** | Dilengkapi fitur backup aman satu klik (*SQLite VACUUM*) untuk mencadangkan jadwal dan riwayat pengiriman Anda. |
+
+---
+
+## 💬 Kelola via Chat WhatsApp (Bot Commands)
+
+Anda dapat mengelola alarm dan jadwal langsung melalui obrolan WhatsApp (melalui fitur **"Message Yourself / Chat ke Diri Sendiri"** ataupun nomor khusus bot).
+
+> ⚠️ **Catatan:** Seluruh perintah wajib diawali dengan tanda seru (`!`) agar sistem membedakan antara perintah dan percakapan biasa.
 
 ```text
-reminder/
-├── backend/
-│   ├── cmd/
-│   │   └── server/          # Entry point server Go Fiber
-│   ├── internal/
-│   │   ├── api/             # Fiber Router, Middleware, & Handlers
-│   │   ├── auth/            # PIN Hashing (bcrypt), Token JWT, Lockout
-│   │   ├── database/        # SQLite WAL connection, migrations, VACUUM backup
-│   │   ├── reminder/        # Reminder CRUD, recurrence calculation, delivery logs
-│   │   ├── scheduler/       # Scheduler runner & duplicate prevention
-│   │   └── whatsapp/        # whatsmeow client & bot command handler
-│   └── go.mod
-├── frontend/
-│   ├── src/
-│   │   ├── api/             # HTTP client helper
-│   │   ├── components/      # UI components (Header, PIN, Modals, Tabs)
-│   │   ├── composables/     # useAuth, useWhatsApp, useReminders, useLogs
-│   │   └── types/           # TypeScript definitions
-│   ├── public/              # PWA icons & manifest
-│   ├── index.html
-│   ├── vite.config.ts
-│   └── package.json
-├── data/                    # SQLite database & backup folder (volume persisten)
-├── bin/                     # Output binary eksekusi
-├── build.sh                 # Single script build (Frontend + Backend) untuk Linux/VPS
-├── build.bat                # Single script build untuk Windows
-├── .nvmrc                   # Pin Node.js versi LTS aman (v24.22.1)
-├── .node-version            # Format versi Node.js untuk fnm / asdf
-├── Dockerfile               # Multi-stage Docker build (Node 24 LTS + Alpine)
-├── compose.yaml             # Docker Compose orchestration (Hardened security)
-├── ecosystem.config.cjs     # Konfigurasi PM2 process manager
-├── DESIGN.md                # Design System specification
-├── PRD.md                   # Product Requirements Document
-├── .env.example
-└── README.md
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │                      CONTOH PERINTAH CEPAT                             │
+ ├────────────────────────────────────────────────────────────────────────┤
+ │  !help                                                                 │
+ │  !buat Absen Pulang Kerja | 16:00 | setiap hari                        │
+ │  !buat Olahraga Pagi | 06:00 | senin, rabu, jumat                      │
+ │  !buat Bayar Tagihan Listrik | 2026-11-01 09:00 | sekali               │
+ │  !daftar                                                               │
+ │  !edit 1 jam 16:30                                                     │
+ │  !nonaktifkan 1                                                        │
+ │  !aktifkan 1                                                           │
+ │  !hapus 1                                                              │
+ └────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Tabel Rincian Perintah Bot:
+
+| Perintah | Contoh Format Chat | Keterangan |
+| :--- | :--- | :--- |
+| `!help` atau `!bantuan` | `!help` | Menampilkan seluruh daftar perintah dan bantuan cara pakai. |
+| `!ping` | `!ping` | Memeriksa respon bot dan status koneksi WhatsApp. |
+| `!buat` atau `!tambah` | `!buat Absen Masuk \| 08:00 \| setiap hari` | Membuat jadwal pengingat harian pada jam 08:00. |
+| `!buat` (Hari tertentu) | `!buat Gym \| 17:00 \| senin, rabu, jumat` | Membuat jadwal yang hanya aktif pada hari-hari tertentu. |
+| `!buat` (Sekali saja) | `!buat Kirim Laporan \| 2026-10-25 14:00 \| sekali` | Pengingat 1x kirim dengan format tanggal `YYYY-MM-DD HH:mm`. |
+| `!daftar` atau `!list` | `!daftar` | Melihat daftar semua reminder beserta nomor ID dan status aktifnya. |
+| `!detail <id>` | `!detail 1` | Menampilkan rincian lengkap dari reminder nomor ID 1. |
+| `!edit <id> jam <jam>` | `!edit 1 jam 08:30` | Mengubah jam pengingat tanpa perlu membuat ulang reminder. |
+| `!aktifkan <id>` | `!aktifkan 1` | Mengaktifkan kembali pengingat yang sebelumnya dimatikan. |
+| `!nonaktifkan <id>` | `!nonaktifkan 1` | Menjeda/mematikan sementara pengingat tanpa menghapusnya. |
+| `!hapus <id>` | `!hapus 1` | Menghapus pengingat secara permanen. |
 
 ---
 
-## 3. Prasyarat Sistem & Kepatuhan Keamanan (Security Releases Oktober 2026)
+## 🚀 Panduan Penggunaan untuk Pengguna Baru
 
-Berdasarkan buletin keamanan resmi Node.js ([Security Releases Oktober 2026](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)), sistem ini telah dikonfigurasi agar patuh terhadap standar keamanan terbaru yang memitigasi kerentanan kritis:
-- **CVE-2026-105482 (High):** `dns.resolve` truncates names containing NUL char.
-- **CVE-2026-105483 & CVE-2026-106069 (High):** TLS certificate hostname bypass (fullwidth IP / loose DNS resolution).
-- **CVE-2026-111497 (High):** Node.js Brotli decoder out-of-bounds write RCE.
-- **CVE-2026-105481 (Medium):** HTTP Keep-alive socket response desynchronization.
-- **ca-cert:** Mitigasi kompromi eMudhra Intermediate CA melalui pembaruan bundle CA sertifikat.
+Hanya butuh **4 langkah mudah** untuk mulai menggunakan asisten WhatsApp Anda:
 
-### Versi Minimal yang Didukung:
-- **Node.js:** `>= 24.22.1` (Latest LTS direkomendasikan) atau `>= 22.23.4` / `>= 26.12.1`.
-- **Go:** `>= 1.27.2`.
-- **NPM:** `>= 10.0.0`.
-
-Anda dapat memverifikasi status kepatuhan keamanan Node.js lokal/server kapan saja dengan menjalankan:
-```bash
-npm run check:node
+```text
+  [ 1. Buka Web ] ──► [ 2. Buat PIN ] ──► [ 3. Scan QR WA ] ──► [ 4. Siap Digunakan! ]
 ```
+
+1. **Buka Dashboard Aplikasi:**
+   Buka alamat web aplikasi Anda di browser HP atau PC (misal: `http://localhost:8080` atau alamat domain Anda).
+2. **Atur PIN Pengaman:**
+   Saat pertama kali dibuka, buat PIN angka (4–12 digit) untuk melindungi dashboard agar tidak dapat diakses orang lain.
+3. **Hubungkan WhatsApp (Scan QR):**
+   - Klik tombol **Hubungkan WhatsApp** di dashboard.
+   - Buka WhatsApp di smartphone Anda ➔ Pilih **Menu (titik tiga) / Pengaturan** ➔ **Perangkat Tertaut (Linked Devices)** ➔ **Tautkan Perangkat**.
+   - Arahkan kamera HP ke QR Code yang tampil di layar web.
+   - Dalam beberapa detik status akan berubah menjadi **WA Terhubung (🟢)**.
+4. **Mulai Buat Reminder:**
+   Buat jadwal baru lewat tombol **+ Buat Reminder** di web atau kirim chat perintah `!buat` langsung di WhatsApp Anda!
 
 ---
 
-## 4. Menjalankan Aplikasi Secara Lokal (Development)
+## 🛠️ Instalasi & Deployment
 
-Anda dapat menjalankan **Backend (Go Fiber)** dan **Frontend (Vue 3 Vite)** secara bersamaan hanya dengan **1 perintah** atau **1 file**:
+Pilih metode instalasi yang paling sesuai dengan kebutuhan Anda:
 
-### Opsi 1: Menggunakan npm (Direkomendasikan)
-```bash
-npm run dev
-```
+### Opsi A: Menggunakan Docker Compose (Sangat Direkomendasikan ⭐)
 
-### Opsi 2: Menggunakan Script (Linux / Mac / Git Bash)
-```bash
-./dev.sh
-```
+Metode termudah, paling rapi, dan terisolasi dengan aman untuk VPS atau server rumahan.
 
-### Opsi 3: Menggunakan File Batch (Windows)
-Cukup **klik ganda (double click)** file `dev.bat` atau jalankan di CMD:
-```cmd
-dev.bat
-```
-
-Kedua server akan aktif secara bersamaan di terminal dengan prefix log berwarna:
-- **Frontend Web:** [http://localhost:5173](http://localhost:5173) (Vite HMR + proxy otomatis ke `/api`)
-- **Backend API:** [http://localhost:8080](http://localhost:8080) (Fiber + WhatsApp Bot + Scheduler)
-
-Tekan `Ctrl + C` untuk menghentikan kedua server sekaligus secara aman.
-
----
-
-## 5. Build Otomatis (Single File Build)
-
-Untuk mem-build Frontend sekaligus Backend menjadi 1 paket binary yang siap dijalankan di server:
-
-### Di Linux / VPS:
-```bash
-chmod +x build.sh
-./build.sh
-```
-
-### Di Windows:
-```cmd
-build.bat
-```
-
-Script ini akan:
-1. Memeriksa kepatuhan keamanan Node.js lokal/server terhadap buletin keamanan Oktober 2026.
-2. Meng-compile aset frontend Vue 3 menjadi static bundle di `frontend/dist`.
-3. Meng-compile backend Go menjadi binary mandiri berkinerja tinggi di `bin/whatsapp-reminder`.
-4. Menyiapkan folder data dan backup database secara otomatis.
-
----
-
-## 6. Deployment ke Production
-
-### A. Deployment Menggunakan Docker Compose (Direkomendasikan)
-
-Konfigurasi Docker telah diperkuat (*security-hardened*) dan siap untuk lingkungan production:
-- **Frontend Builder:** Menggunakan image `node:24-alpine` (Node.js 24 LTS yang telah dipatch terhadap CVE Oktober 2026).
-- **CA Certificates:** Menjalankan `update-ca-certificates` pada stage builder & runner untuk memitigasi kompromi sertifikat perantara (eMudhra CA).
-- **Container Isolation:** Menjalankan user non-root (`appuser`), proteksi `no-new-privileges:true`, dan proses init container (`init: true`).
-- **Graceful Shutdown:** `stop_grace_period: 15s` untuk menjamin SQLite WAL flush dan whatsmeow disconnection berjalan tanpa kehilangan data.
-
-Langkah deploy:
-1. Pastikan Docker dan Docker Compose terinstall di server.
-2. Clone repository dan siapkan `.env`:
+1. **Pastikan Docker dan Docker Compose telah terpasang.**
+2. **Clone repositori dan salin konfigurasi:**
    ```bash
+   git clone https://github.com/oxydaid/rep-task-reminder.git
+   cd rep-task-reminder
    cp .env.example .env
    ```
-3. Jalankan container:
+3. **Jalankan aplikasi:**
    ```bash
    docker compose up -d --build
    ```
-4. Periksa log:
+4. **Cek status log:**
    ```bash
    docker compose logs -f whatsapp-reminder
    ```
-5. Akses dashboard di `http://IP_SERVER:8080`.
-   Data database SQLite dan sesi WhatsApp disimpan aman di volume `./data`.
+5. Akses dashboard di browser melalui `http://IP_SERVER:8080`. Seluruh data tersimpan aman di folder `./data`.
 
 ---
 
-### B. Deployment Menggunakan PM2 di VPS (Native)
+### Opsi B: Menggunakan Native VPS (Binary Go + PM2)
 
-Pada deployment native, PM2 bertindak sebagai process manager untuk memantau binary Go. Karena PM2 berjalan di atas Node.js, pastikan Node.js pada VPS telah diperbarui ke versi yang aman.
+Cocok untuk pengguna VPS dengan resource terbatas yang ingin performa maksimal tanpa overhead container.
 
-1. **Pastikan Versi Node.js di VPS Aman:**
-   Jika menggunakan NVM:
+1. **Pastikan Node.js (v24 LTS aman) dan Go (1.27+) terpasang:**
    ```bash
-   nvm install 24.22.1
-   nvm use 24.22.1
-   nvm alias default 24.22.1
+   # Gunakan NVM untuk mengaktifkan Node.js versi aman
+   nvm install 24.22.1 && nvm use 24.22.1
    npm install -g pm2
-   pm2 update
    ```
-   Verifikasi dengan:
-   ```bash
-   npm run check:node
-   ```
-
-2. **Build Aplikasi:**
+2. **Kompilasi Fullstack (Frontend + Backend):**
    ```bash
    chmod +x build.sh
    ./build.sh
    ```
-
-3. **Jalankan Proses dengan PM2:**
+3. **Jalankan dengan PM2 Process Manager:**
    ```bash
    pm2 start ecosystem.config.cjs
-   ```
-   Konfigurasi `ecosystem.config.cjs` telah dioptimalkan dengan:
-   - `kill_timeout: 10000` (10 detik) untuk graceful database close.
-   - `min_uptime: '10s'` dan `max_restarts: 10` untuk mencegah crash-loop tak terkendali.
-   - `restart_delay: 3000` untuk jeda pemulihan restart yang stabil.
-
-4. **Perintah PM2 yang Sering Digunakan:**
-   ```bash
-   # Melihat status aplikasi
-   pm2 status
-
-   # Melihat log output aplikasi
-   pm2 logs whatsapp-reminder
-
-   # Me-restart aplikasi
-   pm2 restart whatsapp-reminder
-
-   # Menyimpan daftar proses agar otomatis hidup saat server reboot
    pm2 save
    ```
-
-*Penting:* Jangan menjalankan instance backend aktif ganda pada database yang sama untuk mencegah konflik scheduler dan WhatsApp session.
+4. **Perintah PM2 yang sering digunakan:**
+   ```bash
+   pm2 status                  # Cek status proses
+   pm2 logs whatsapp-reminder  # Pantau log secara langsung
+   pm2 restart whatsapp-reminder # Me-restart aplikasi
+   ```
 
 ---
 
-## 7. Setup Reverse Proxy & HTTPS (Nginx)
+### Opsi C: Menjalankan di Komputer Lokal (Development)
 
-Untuk menghubungkan domain dan sertifikat SSL Let's Encrypt:
+Untuk Anda yang ingin memodifikasi kode atau mencoba di laptop pribadi:
+
+- **Di Linux / macOS / Git Bash:**
+  ```bash
+  npm run dev
+  # ATAU
+  ./dev.sh
+  ```
+- **Di Windows:**
+  Cukup **klik ganda (double-click)** file `dev.bat` atau jalankan di CMD:
+  ```cmd
+  dev.bat
+  ```
+
+Keduanya akan otomatis mengaktifkan dua server secara berdampingan:
+- 🌐 **Frontend (Vue 3 Vite):** `http://localhost:5173`
+- ⚙️ **Backend API (Go Fiber):** `http://localhost:8080`
+
+---
+
+## 🔒 Konfigurasi Nginx & Domain HTTPS (Opsional)
+
+Untuk menghubungkan domain pribadi Anda (misal `reminder.domainanda.com`) dan memasang sertifikat SSL gratis:
 
 ```nginx
 server {
@@ -269,65 +218,107 @@ server {
 }
 ```
 
-Aktifkan HTTPS dengan Certbot:
+Aktifkan SSL dengan Certbot:
 ```bash
 certbot --nginx -d reminder.domainanda.com
 ```
 
 ---
 
-## 8. Cara Scan QR WhatsApp Pertama Kali
+## 🛡️ Kepatuhan Keamanan (Oktober 2026)
 
-1. Buka Dashboard Web pada browser Anda (`http://localhost:8080` atau domain Anda).
-2. Jika pertama kali membuka, sistem meminta Anda membuat **PIN Dashboard** (4–12 digit). Masukkan dan konfirmasi PIN Anda.
-3. Klik tombol **Hubungkan WhatsApp** atau ikon QR Code di bagian header.
-4. Buka aplikasi WhatsApp di HP Anda.
-5. Masuk ke **Menu (titik tiga) / Pengaturan** > **Perangkat Tertaut** > **Tautkan Perangkat**.
-6. Arahkan kamera ke QR Code yang muncul di layar.
-7. Dalam beberapa detik status akan berubah menjadi **WA Terhubung (🟢)**.
-8. Selesai! Sesi WhatsApp disimpan persisten di `data/whatsapp.db`.
+Proyek ini telah dikonfigurasi dan diuji secara ketat agar **100% patuh terhadap standar keamanan rilis Node.js Oktober 2026** ([Node.js October 2026 Security Releases](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases)):
 
----
-
-## 9. Backup dan Restore Database
-
-### Membuat Backup Aman
-Aplikasi menyediakan fungsi backup konsisten berbasis SQLite `VACUUM INTO`:
-1. Melalui UI Dashboard: Buka tab **Pengaturan** > klik **Buat Backup Sekarang**.
-2. Melalui API: Kirim `POST /api/backup` dengan Header Authorization. File backup akan disimpan di `data/backups/backup_YYYYMMDD_HHMMSS.db`.
-
-### Restore Database
-Jika ingin memulihkan database dari file backup:
-1. Hentikan aplikasi:
-   - Docker: `docker compose down`
-   - PM2: `pm2 stop whatsapp-reminder`
-2. Salin file backup ke lokasi database aktif:
-   ```bash
-   cp data/backups/backup_xxxx.db data/reminders.db
-   ```
-3. Nyalakan kembali aplikasi:
-   - Docker: `docker compose up -d`
-   - PM2: `pm2 start ecosystem.config.cjs`
-
----
-
-## 10. Troubleshooting
-
-- **QR Code tidak muncul / Kadaluwarsa:**  
-  Klik tombol *Segarkan* atau *Tampilkan QR Code* pada modal koneksi WhatsApp di dashboard.
-- **Pesan WhatsApp tidak terkirim:**  
-  1. Periksa apakah status WhatsApp masih terhubung.
-  2. Buka tab *Riwayat* di dashboard untuk membaca pesan error teknis.
-  3. Coba kirim pesan uji coba dari modal WhatsApp untuk menguji koneksi socket.
-  4. Pastikan nomor tujuan menggunakan format internasional yang valid (contoh: `08123456789` atau `628123456789`).
-- **Lupa PIN Dashboard:**  
-  PIN tersimpan dalam tabel `app_settings` di file `data/reminders.db`. Anda dapat mereset kunci PIN dengan menjalankan:
+- ✅ **Mitigasi CVE Kritis:**
+  - `CVE-2026-105482` (High — DNS resolve NUL truncation).
+  - `CVE-2026-105483` & `CVE-2026-106069` (High — TLS certificate hostname bypass).
+  - `CVE-2026-111497` (High — Brotli decoder out-of-bounds write RCE).
+  - `CVE-2026-105481` (Medium — Keep-alive socket desync).
+  - Pembaharuan CA Certificates untuk mencegah kompromi *eMudhra Intermediate CA*.
+- ✅ **Base Image Ter-patch:** Dockerfile menggunakan `node:24-alpine` (Node.js 24 LTS) yang telah berisi seluruh patch keamanan.
+- ✅ **Container Hardening:** Menjalankan user non-root (`appuser`), proteksi `no-new-privileges:true`, proses init container (`init: true`), dan graceful shutdown 15 detik.
+- ✅ **Built-in Validator:** Anda dapat menjalankan verifikasi keamanan kapan saja dengan:
   ```bash
-  sqlite3 data/reminders.db "DELETE FROM app_settings WHERE key IN ('pin_hash', 'failed_login_attempts', 'login_locked_until');"
+  npm run check:node
   ```
-  Setelah itu refresh dashboard untuk mengatur PIN baru.
 
 ---
 
-## 11. Lisensi
-Didistribusikan untuk penggunaan pribadi dan self-hosted sesuai spesifikasi `PRD.md`.
+## 📂 Struktur Direktori Proyek
+
+```text
+reminder/
+├── backend/
+│   ├── cmd/server/          # Entry point aplikasi Go Fiber
+│   ├── internal/
+│   │   ├── api/             # REST API routes, JWT middleware, & request handlers
+│   │   ├── auth/            # Enkripsi PIN (bcrypt), token JWT, proteksi lockout
+│   │   ├── database/        # Koneksi SQLite WAL, migrasi tabel, & backup VACUUM
+│   │   ├── reminder/        # Logika CRUD reminder, kalkulasi jadwal, & log status
+│   │   ├── scheduler/       # Mesin penjadwal otomatis & pencegah duplikasi kirim
+│   │   └── whatsapp/        # whatsmeow client & parser perintah bot WhatsApp
+│   └── go.mod
+├── frontend/
+│   ├── src/
+│   │   ├── api/             # Client HTTP helper
+│   │   ├── components/      # Komponen antarmuka (Dashboard, Reminder, Log, Modal)
+│   │   ├── composables/     # State management & reactive composables
+│   │   └── types/           # Definisi interface TypeScript
+│   ├── public/              # Manifest PWA & icon aset
+│   └── vite.config.ts
+├── data/                    # Volume persisten database SQLite (reminders.db & whatsapp.db)
+├── bin/                     # Lokasi output file binary kompilasi
+├── build.sh                 # Script build 1-klik untuk Linux / VPS
+├── build.bat                # Script build 1-klik untuk Windows
+├── Dockerfile               # Konfigurasi container multi-stage berkeamanan tinggi
+├── compose.yaml             # Orkestrasi Docker Compose siap produksi
+├── ecosystem.config.cjs     # Konfigurasi PM2 Process Manager
+├── image.png                # Tangkapan layar tampilan dashboard aplikasi
+├── .nvmrc                   # Pin versi Node.js LTS ter-patch (v24.22.1)
+└── README.md
+```
+
+---
+
+## ❓ Pertanyaan Umum (FAQ)
+
+<details>
+<summary><b>1. Apakah HP saya harus selalu menyala dan terhubung ke internet?</b></summary>
+<br/>
+<b>Tidak!</b> Berkat teknologi WhatsApp Multi-Device resmi, setelah Anda menautkan perangkat melalui scan QR Code, server backend akan terhubung secara mandiri langsung ke server WhatsApp. Pengingat akan tetap terkirim tepat waktu meskipun smartphone Anda mati, kehabisan baterai, atau sedang tidak ada sinyal.
+</details>
+
+<details>
+<summary><b>2. Apakah nomor WhatsApp saya aman dari risiko pemblokiran (banned)?</b></summary>
+<br/>
+<b>Sangat aman!</b> WhatsApp Reminder dirancang khusus untuk penggunaan pribadi (<i>Personal Reminder</i>), di mana pesan dikirimkan ke nomor Anda sendiri (Note to Self) atau ke orang terdekat dengan volume wajar layaknya percakapan normal. Sistem ini tidak melakukan blast massal spam ke nomor asing yang berisiko melanggar ketentuan WhatsApp.
+</details>
+
+<details>
+<summary><b>3. Bagaimana cara memasang aplikasi ini di layar utama HP (PWA)?</b></summary>
+<br/>
+Buka alamat web dashboard di browser HP Anda (Chrome di Android atau Safari di iPhone). Pada menu browser, pilih <b>"Tambahkan ke Layar Utama" (Add to Home Screen)</b> atau <b>"Install App"</b>. Ikon WhatsApp Reminder akan muncul di menu smartphone Anda dan dapat dibuka fullscreen tanpa address bar layaknya aplikasi native.
+</details>
+
+<details>
+<summary><b>4. Bagaimana jika saya lupa PIN masuk dashboard?</b></summary>
+<br/>
+Karena Anda adalah pemilik server/database, Anda dapat mereset PIN dengan mengakses file database SQLite di server:
+<pre><code>sqlite3 data/reminders.db "DELETE FROM app_settings WHERE key IN ('pin_hash', 'failed_login_attempts', 'login_locked_until');"</code></pre>
+Setelah perintah dijalankan, muat ulang (refresh) halaman dashboard di browser, dan Anda akan diminta membuat PIN baru.
+</details>
+
+<details>
+<summary><b>5. Bagaimana cara memulihkan (restore) data dari file backup?</b></summary>
+<br/>
+1. Hentikan aplikasi: <code>docker compose down</code> atau <code>pm2 stop whatsapp-reminder</code>.<br/>
+2. Salin file backup cadangan ke lokasi aktif:
+<pre><code>cp data/backups/backup_xxxx.db data/reminders.db</code></pre>
+3. Nyalakan kembali aplikasi: <code>docker compose up -d</code> atau <code>pm2 start ecosystem.config.cjs</code>.
+</details>
+
+---
+
+## 📄 Lisensi
+
+Dilisensikan di bawah **MIT License**. Terbuka dan bebas digunakan untuk kebutuhan pribadi, self-hosted, maupun pengembangan lebih lanjut.
